@@ -2,7 +2,7 @@
 
 Thoughtful gifts from trusted local vendors, occasion pages with wishlists that never double up, vendor storefronts, and a digital reveal for every gift. Built from `JustGifter_Product_Requirements.md` (v1.3).
 
-**Stack:** Vite + React 19 + TypeScript · Tailwind v4 + shadcn/ui (Radix) · Solar Icons · TanStack Query · React Hook Form + Zod · Motion · Supabase (Postgres, Auth, Edge Functions, Storage, Cron) · Paystack · Zoho Mail SMTP · Claude API · Cloudflare Workers (static assets + edge metadata).
+**Stack:** Vite + React 19 + TypeScript · Tailwind v4 + shadcn/ui (Radix) · Solar Icons · TanStack Query · React Hook Form + Zod · Motion · Supabase (Postgres, Auth, Edge Functions, Storage, Cron) · Paystack · ZeptoMail SMTP · Claude API · Cloudflare Workers (static assets + edge metadata).
 
 ## Run it now (no accounts needed)
 
@@ -21,7 +21,7 @@ Try: buy something as a gift → pay on the sandbox → open the recipient link 
 
 ## Connect the real services
 
-See **[docs/SETUP.md](docs/SETUP.md)** — Supabase, Paystack, Zoho Mail, Claude, Cloudflare, step by step. Setting `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` switches the app to the real backend; nothing else in the UI changes.
+See **[docs/SETUP.md](docs/SETUP.md)** — Supabase, Paystack, ZeptoMail, Claude, Cloudflare, step by step. Setting `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` switches the app to the real backend; nothing else in the UI changes.
 
 ## Project layout
 

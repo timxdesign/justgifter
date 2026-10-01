@@ -35,14 +35,13 @@ Do this once per environment (development, staging, production). Each environmen
 4. Refunds are submitted through the Refunds API and completed by the `refund.processed` webhook.
 5. Before live payments: confirm the marketplace settlement model (subaccounts/splits), merchant of record and payout timing with Paystack and your advisers. The code records vendor payables in an append-only ledger and does **not** describe funds as escrow.
 
-## 3. Zoho Mail (email)
+## 3. ZeptoMail (transactional email by Zoho)
 
-1. In Zoho Mail, create the sending mailbox (e.g. `hello@justgifter.com`) and an app-specific password.
-2. Use the SMTP host for **your account's datacentre** (shown in Zoho Mail settings — e.g. `smtp.zoho.com`, `smtp.zoho.eu`, `smtp.zoho.in`), port 465 (SSL).
-3. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`. Set `SEND_REAL_EMAIL=true` **only in production**.
-4. Configure SPF, DKIM and DMARC for the domain in your DNS (Zoho's domain setup page lists the records).
-5. Supabase Auth emails: Dashboard → Authentication → SMTP → use the same Zoho credentials with a separate sender name if you like.
-6. The outbox records provider acceptance only; check Zoho's reporting for bounces.
+1. In ZeptoMail, verify the `justgifter.com` domain (add the SPF/DKIM records it lists to your DNS, plus a DMARC record).
+2. Mail Agents → your agent → SMTP: host `smtp.zeptomail.com`, port 465 (SSL), username `emailapikey`, password = the generated SMTP password.
+3. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (any `@justgifter.com` sender). Set `SEND_REAL_EMAIL=true` **only in production**.
+4. Supabase Auth emails: Dashboard → Authentication → SMTP → use the same ZeptoMail credentials.
+5. The outbox records provider acceptance only; check ZeptoMail's processed/bounce logs for delivery.
 
 ## 4. Claude (gift assistant and page designer)
 
