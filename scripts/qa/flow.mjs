@@ -1,0 +1,17 @@
+import { chromium } from "@playwright/test"
+const SP = process.argv[2]
+const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1440, height: 900 } })
+const errs=[]; p.on("pageerror", e=>errs.push(e.message)); p.on("console", m=>m.type()==="error"&&errs.push(m.text()))
+await p.goto("http://127.0.0.1:5174/products/the-celebration-box"); await p.waitForTimeout(1500)
+await p.getByRole("button", { name: "Send as a gift" }).click(); await p.waitForTimeout(2000)
+await p.screenshot({ path: SP + "/checkout.png" })
+await p.screenshot({ path: SP + "/checkout-full.png", fullPage: true })
+const link = await p.evaluate(() => JSON.parse(localStorage.getItem("jg-demo-db")).outbox.find(m => m.to==="chioma@example.com" && m.kind==="gift_reveal").link.href)
+await p.evaluate(() => Object.keys(localStorage).filter(k=>k.startsWith("jg-opened")).forEach(k=>localStorage.removeItem(k)))
+await p.goto("http://127.0.0.1:5174" + link); await p.waitForTimeout(1500)
+await p.screenshot({ path: SP + "/gift-stage.png" })
+await p.getByRole("button", { name: "Open your gift" }).first().click(); await p.waitForTimeout(1500)
+await p.screenshot({ path: SP + "/gift-mid.png" })
+await p.waitForTimeout(2500)
+await p.screenshot({ path: SP + "/gift-open.png", fullPage: true })
+console.log(errs.join("\n")); await b.close()

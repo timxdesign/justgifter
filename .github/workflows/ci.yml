@@ -1,0 +1,49 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+
+  edge-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with: { deno-version: v2.x }
+      - run: deno check --config supabase/functions/deno.json supabase/functions/api/index.ts supabase/functions/paystack-webhook/index.ts supabase/functions/jobs/index.ts
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: pg }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      PGPASSWORD: pg
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - name: Apply migrations against a Supabase-shaped database
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/supabase_stub.sql
+          for f in supabase/migrations/2026100100000*.sql supabase/migrations/20261001000100*.sql; do psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"; done
+          node --experimental-strip-types scripts/generate-seed-sql.ts
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/seed.sql
+      - run: PSQL="psql -h localhost -U postgres" ./supabase/tests/commerce_test.sh

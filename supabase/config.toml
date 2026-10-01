@@ -1,0 +1,43 @@
+# Supabase project configuration (local development via `supabase start`).
+project_id = "justgifter"
+
+[api]
+port = 54321
+schemas = ["public"]
+max_rows = 500
+
+[db]
+port = 54322
+major_version = 17
+
+[auth]
+site_url = "http://127.0.0.1:5173"
+additional_redirect_urls = ["http://127.0.0.1:5173", "https://justgifter.com", "https://staging.justgifter.com"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+otp_length = 6
+otp_expiry = 600
+
+# Production: configure Zoho Mail custom SMTP in the dashboard (Auth → SMTP) using the
+# datacentre host shown in your Zoho account. See docs/SETUP.md.
+
+[auth.mfa]
+max_enrolled_factors = 4
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[storage]
+file_size_limit = "8MiB"
+
+[functions.api]
+verify_jwt = false   # public methods (catalogue, gift links) are allowed; the function checks auth per method
+[functions.paystack-webhook]
+verify_jwt = false   # authenticated by Paystack's HMAC signature instead
+[functions.jobs]
+verify_jwt = false   # authenticated by the CRON_SECRET header
