@@ -8,5 +8,6 @@ export default defineConfig({
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
-  webServer: process.env.E2E_BASE_URL ? undefined : { command: "npx vite --port 5174 --host 127.0.0.1", url: "http://127.0.0.1:5174", reuseExistingServer: true },
+  // Tests always run against the in-browser demo backend, never the live Supabase project in .env.
+  webServer: process.env.E2E_BASE_URL ? undefined : { command: "npx vite --port 5174 --host 127.0.0.1 --strictPort", url: "http://127.0.0.1:5174", reuseExistingServer: false, env: { VITE_DEMO_MODE: "true" } },
 })
