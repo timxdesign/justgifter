@@ -42,8 +42,8 @@ jobs:
         with: { node-version: 24 }
       - name: Apply migrations against a Supabase-shaped database
         run: |
-          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/supabase_stub.sql
-          for f in supabase/migrations/2026100100000*.sql supabase/migrations/20261001000100*.sql; do psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"; done
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/tests/supabase_stub.sql -c "create schema if not exists extensions"
+          for f in supabase/migrations/2026100100000*.sql supabase/migrations/20261001000100*.sql supabase/migrations/20261001134213*.sql; do psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f "$f"; done
           node --experimental-strip-types scripts/generate-seed-sql.ts
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 -f supabase/seed.sql
       - run: PSQL="psql -h localhost -U postgres" ./supabase/tests/commerce_test.sh

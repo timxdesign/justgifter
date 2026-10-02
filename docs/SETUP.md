@@ -71,3 +71,14 @@ Do this once per environment (development, staging, production). Each environmen
 - [ ] Backups and a restore rehearsal done; RPO/RTO measured.
 - [ ] Pilot vendors approved, storefronts published, stock verified.
 - [ ] End-to-end test in staging: signup, recovery, gift reveal, receipts, refunds.
+
+## Automatic deploys from GitHub (Cloudflare Workers Builds)
+
+Every push to `main` builds and deploys the site; other branches get a private preview version.
+
+1. Cloudflare dashboard → Workers & Pages → **justgifter** → Settings → **Build** → Connect → GitHub → `timxdesign/justgifter`.
+2. Production branch: `main`. Build command: `npm run build`. Deploy command: `npx wrangler deploy`.
+   Non-production branch deploy command: `npx wrangler versions upload`.
+3. Root directory: `/` (leave blank). No build variables are needed: public values come from `.env.production`.
+
+Edge Functions and database migrations are not part of this build; deploy them with the Supabase CLI.
