@@ -35,7 +35,6 @@ export const router = createBrowserRouter([
           { path: "help", element: page(() => import("@/pages/help")) },
           { path: "policies/:policy", element: page(() => import("@/pages/help")) },
           { path: "cart", element: page(() => import("@/pages/cart")) },
-          { path: "checkout", element: page(() => import("@/pages/checkout")) },
           { path: "checkout/confirm/:reference", element: page(() => import("@/pages/payment-confirm")) },
           { path: "signin", element: page(() => import("@/pages/auth/signin")) },
           { path: "orders/access", element: page(() => import("@/pages/auth/order-access")) },
@@ -63,6 +62,7 @@ export const router = createBrowserRouter([
       },
 
       // ---------------------------------------------------------------- Full-bleed experiences
+      { path: "checkout", element: page(() => import("@/pages/checkout")) },
       { path: "events/:id/edit", element: <RequireAuth>{page(() => import("@/pages/host/event-editor"))}</RequireAuth> },
       { path: "e/:slug", element: page(() => import("@/pages/event-public")) },
       { path: "g/:token", element: page(() => import("@/pages/gift")) },
