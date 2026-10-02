@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<meta name="supported-color-schemes" content="light only">
+<title>Confirm it's you</title>
+</head>
+<body style="margin:0;padding:0;background:#f7f2ec;-webkit-text-size-adjust:100%">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">Your security code is {{ .Token }}.&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f2ec">
+  <tr><td align="center" style="padding:40px 16px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px">
+      <tr><td style="padding:0 8px 24px">
+        <a href="https://justgifter.com" style="text-decoration:none"><img src="https://justgifter.com/media/brand/email-logo.png" width="148" height="36" alt="JustGifter" style="display:block;border:0;width:148px;height:36px"></a>
+      </td></tr>
+      <tr><td style="background:#ffffff;border-radius:24px;padding:40px 36px;border:1px solid #eee5dc">
+        <h1 style="margin:0 0 12px;font-family:Georgia, 'Times New Roman', serif;font-size:28px;line-height:34px;font-weight:600;color:#1e1311;letter-spacing:-0.01em">Confirm it's you</h1>
+        <p style="margin:0;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:16px;line-height:25px;color:#6b5c55">Enter this code on JustGifter to continue with a sensitive account change.</p>
+        
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 8px">
+  <tr><td align="center" style="background:#fff1e3;border-radius:16px;padding:26px 16px">
+    <div style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#bb3f00;font-weight:600;margin-bottom:10px">Your code</div>
+    <div style="font-family:'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;font-size:38px;line-height:1;letter-spacing:12px;font-weight:700;color:#1e1311;padding-left:12px">{{ .Token }}</div>
+  </td></tr>
+</table>
+<p style="margin:0 0 4px;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:13px;line-height:20px;color:#7a6b64;text-align:center">Expires in 10 minutes · Works once</p>
+        
+      </td></tr>
+      <tr><td style="padding:24px 12px 0">
+        <p style="margin:0 0 10px;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:13px;line-height:20px;color:#6b5c55">You're getting this because a protected action was started on your JustGifter account. If that wasn't you, you can safely ignore this email — nobody can get in without the code. JustGifter will never ask you to share it.</p>
+        <p style="margin:0;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;font-size:13px;line-height:20px;color:#7a6b64">Sent to {{ .Email }} · <a href="https://justgifter.com" style="color:#7a6b64;text-decoration:underline">justgifter.com</a> · Thoughtful gifts, delivered with a moment.</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

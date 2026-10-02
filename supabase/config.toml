@@ -23,8 +23,20 @@ enable_confirmations = false
 otp_length = 6
 otp_expiry = 600
 
-# Production: configure Zoho Mail custom SMTP in the dashboard (Auth → SMTP) using the
-# datacentre host shown in your Zoho account. See docs/SETUP.md.
+# Production: configure ZeptoMail custom SMTP in the dashboard (Auth → SMTP) and paste the
+# templates from supabase/templates/ (Auth → Emails → Templates). See docs/SETUP.md.
+[auth.email.template.magic_link]
+subject = "{{ .Token }} is your JustGifter sign-in code"
+content_path = "./supabase/templates/magic-link.html"
+[auth.email.template.confirmation]
+subject = "{{ .Token }} is your JustGifter code"
+content_path = "./supabase/templates/confirm-signup.html"
+[auth.email.template.email_change]
+subject = "{{ .Token }} confirms your new JustGifter email"
+content_path = "./supabase/templates/email-change.html"
+[auth.email.template.reauthentication]
+subject = "{{ .Token }} is your JustGifter security code"
+content_path = "./supabase/templates/reauthentication.html"
 
 [auth.mfa]
 max_enrolled_factors = 4
