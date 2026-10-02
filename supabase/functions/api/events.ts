@@ -42,7 +42,7 @@ export const events: Record<string, Handler> = {
   async listMyEvents({ caller }) {
     const u = requireUser(caller)
     const own = must(await db().from("events").select("*").eq("host_user_id", u.userId)) as any[]
-    const shared = must(await db().from("events").select("*").contains("co_hosts", [{ email: u.email, status: "accepted" }])) as any[]
+    const shared = must(await db().from("events").select("*").contains("co_hosts", JSON.stringify([{ email: u.email, status: "accepted" }]))) as any[]
     const rows = [...own, ...shared.filter((r) => !own.some((o) => o.id === r.id))].sort((a, b) => b.updated_at.localeCompare(a.updated_at))
     const wishes = must(await db().from("wishlist_items").select("event_id, status, purchased_qty").in("event_id", rows.map((r) => r.id).concat("-"))) as any[]
     return rows.filter((r) => r.status !== "archived" || r.host_user_id === u.userId).map((r) => {

@@ -41,7 +41,7 @@ export const catalog: Record<string, Handler> = {
         caller.vendorId = invite.vendor_id
         caller.roles = [...new Set([...caller.roles, "vendor_staff" as const])]
       }
-      const invited = must(await db().from("events").select("id, co_hosts").contains("co_hosts", [{ email: caller.email, status: "invited" }])) as any[]
+      const invited = must(await db().from("events").select("id, co_hosts").contains("co_hosts", JSON.stringify([{ email: caller.email, status: "invited" }]))) as any[]
       for (const ev of invited) {
         await db().from("events").update({ co_hosts: ev.co_hosts.map((c: any) => (c.email === caller.email && c.status === "invited" ? { ...c, status: "accepted", userId: caller.userId, respondedAt: new Date().toISOString() } : c)) }).eq("id", ev.id)
       }
