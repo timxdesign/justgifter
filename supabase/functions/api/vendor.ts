@@ -333,7 +333,7 @@ export const vendor: Record<string, Handler> = {
     const { vendor: v, u } = await ownerCtx(caller)
     if (!args.input?.code) {
       // Re-authentication with a fresh code (AC 14).
-      await issueOtp(`bank:${v.id}`, u.email, "Confirm your bank detail change", (code) => `Your code is ${code}. If you didn't request this, contact support immediately.`)
+      await issueOtp(`bank:${v.id}`, u.email, { kind: "bank", store: v.name }, u.name?.split(" ")[0])
       throw fail("unauthorised", `We've sent a code to ${maskContact(u.email)}. Enter it to confirm.`)
     }
     await consumeOtp(`bank:${v.id}`, String(args.input.code))

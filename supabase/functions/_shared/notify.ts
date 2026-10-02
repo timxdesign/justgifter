@@ -1,11 +1,12 @@
-import nodemailer from "npm:nodemailer@6"
 import { db } from "./db.ts"
 import { env } from "./env.ts"
 import { uid } from "./domain/index.ts"
+import { type Banner, esc } from "./email/layout.ts"
+import { render, sendNow } from "./email/send.ts"
 
 /**
  * Outbox pattern (§14): business transactions enqueue notifications in the database; the jobs
- * worker delivers them through Zoho Mail SMTP with bounded retries. Provider acceptance is
+ * worker delivers them through the SMTP relay (ZeptoMail) with bounded retries. Provider acceptance is
  * recorded as "accepted" — never as confirmed inbox delivery.
  */
 
@@ -31,26 +32,38 @@ export async function enqueue(msg: Message) {
   })
 }
 
-let transport: ReturnType<typeof nodemailer.createTransport> | null = null
-function smtp() {
-  // Use the exact host for your Zoho datacentre (e.g. smtp.zoho.com, smtp.zoho.eu) — see docs/SETUP.md.
-  transport ??= nodemailer.createTransport({ host: env.smtpHost(), port: env.smtpPort(), secure: env.smtpPort() === 465, auth: { user: env.smtpUser(), pass: env.smtpPass() } })
-  return transport
+const BANNERS: Record<string, Banner> = {
+  gift_reveal: "open",
+  claim_reminder: "gift",
+  receipt: "bag",
+  refund: "parcel",
+  vendor_new_order: "store",
+  host: "balloons",
 }
 
-const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!)
+const EYEBROWS: Record<string, string> = {
+  gift_reveal: "A gift for you",
+  claim_reminder: "Your gift is waiting",
+  receipt: "Payment confirmed",
+  refund: "Refund",
+  vendor_new_order: "New order",
+  host: "Occasion page",
+}
 
-function html(m: { subject: string; body: string; link_label: string | null; link_href: string | null }) {
-  const url = m.link_href ? new URL(m.link_href, env.siteUrl()).toString() : null
-  return `<!doctype html><html><body style="margin:0;background:#faf6f0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1e1311">
-<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:20px;padding:32px">
-<tr><td style="font-family:Georgia,serif;font-size:22px;font-weight:600;padding-bottom:16px">JustGifter</td></tr>
-<tr><td style="font-size:20px;font-weight:600;padding-bottom:12px">${escape(m.subject)}</td></tr>
-<tr><td style="font-size:16px;line-height:1.55;color:#4a3b36;padding-bottom:24px">${escape(m.body)}</td></tr>
-${url ? `<tr><td><a href="${escape(url)}" style="display:inline-block;background:#1e1311;color:#fff;text-decoration:none;padding:14px 24px;border-radius:999px;font-weight:600">${escape(m.link_label ?? "Open")}</a></td></tr>` : ""}
-<tr><td style="font-size:12px;color:#8a7d78;padding-top:28px">You're receiving this because of an order or gift on JustGifter. Gift links are private — please don't forward them.</td></tr>
-</table></td></tr></table></body></html>`
+/** Queued notifications share the code emails' layout; artwork follows the kind of message. */
+function mail(m: { recipient: string; kind: string; subject: string; body: string; link_label: string | null; link_href: string | null }) {
+  return render(m.subject, {
+    preheader: m.body.slice(0, 140),
+    banner: BANNERS[m.kind],
+    eyebrow: EYEBROWS[m.kind],
+    title: m.subject,
+    intro: [esc(m.body)],
+    cta: m.link_href ? { label: m.link_label ?? "Open JustGifter", href: m.link_href } : undefined,
+    reason: m.kind === "gift_reveal" || m.kind === "claim_reminder"
+      ? "Someone sent you a gift on JustGifter. Gift links are private to you, so please don't forward this email."
+      : m.kind === "vendor_new_order" ? "You're getting this because you run a store on JustGifter." : "You're getting this because of an order, gift or account activity on JustGifter.",
+    to: m.recipient,
+  })
 }
 
 /** Delivers queued notifications in a bounded batch. Called by the jobs worker. */
@@ -60,7 +73,7 @@ export async function deliverOutbox(limit = 25) {
   for (const m of data ?? []) {
     try {
       if (env.sendRealEmail() && env.smtpHost()) {
-        await smtp().sendMail({ from: env.mailFrom(), to: m.recipient, subject: m.subject, text: `${m.body}${m.link_href ? `\n\n${m.link_label}: ${new URL(m.link_href, env.siteUrl())}` : ""}`, html: html(m) })
+        await sendNow(m.recipient, mail(m))
       } else {
         console.log(`[mail suppressed outside production] ${m.kind} → ${m.recipient}: ${m.subject}`)
       }

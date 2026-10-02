@@ -23,20 +23,12 @@ enable_confirmations = false
 otp_length = 6
 otp_expiry = 600
 
-# Production: configure ZeptoMail custom SMTP in the dashboard (Auth → SMTP) and paste the
-# templates from supabase/templates/ (Auth → Emails → Templates). See docs/SETUP.md.
-[auth.email.template.magic_link]
-subject = "{{ .Token }} is your JustGifter sign-in code"
-content_path = "./supabase/templates/magic-link.html"
-[auth.email.template.confirmation]
-subject = "{{ .Token }} is your JustGifter code"
-content_path = "./supabase/templates/confirm-signup.html"
-[auth.email.template.email_change]
-subject = "{{ .Token }} confirms your new JustGifter email"
-content_path = "./supabase/templates/email-change.html"
-[auth.email.template.reauthentication]
-subject = "{{ .Token }} is your JustGifter security code"
-content_path = "./supabase/templates/reauthentication.html"
+# Auth emails are written by the auth-email Edge Function (Send Email hook), not dashboard templates.
+# Locally: export SEND_EMAIL_HOOK_SECRET="v1,whsec_<base64>" and set enabled = true.
+[auth.hook.send_email]
+enabled = false
+uri = "http://host.docker.internal:54321/functions/v1/auth-email"
+secrets = "env(SEND_EMAIL_HOOK_SECRET)"
 
 [auth.mfa]
 max_enrolled_factors = 4
@@ -51,5 +43,7 @@ file_size_limit = "8MiB"
 verify_jwt = false   # public methods (catalogue, gift links) are allowed; the function checks auth per method
 [functions.paystack-webhook]
 verify_jwt = false   # authenticated by Paystack's HMAC signature instead
+[functions.auth-email]
+verify_jwt = false   # authenticated by the Standard Webhooks signature from Supabase Auth
 [functions.jobs]
 verify_jwt = false   # authenticated by the CRON_SECRET header

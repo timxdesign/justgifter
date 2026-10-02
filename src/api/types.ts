@@ -665,7 +665,8 @@ export interface Api {
 
   // identity
   getSession(): Promise<SessionUser | null>
-  signInWithEmail(email: string): Promise<{ devCode?: string }>
+  /** `next` is where the person is heading; the sign-in email is tailored to it. */
+  signInWithEmail(email: string, next?: string): Promise<{ devCode?: string }>
   verifyEmailCode(email: string, code: string): Promise<SessionUser>
   signOut(): Promise<void>
   listPersonas(): DemoPersona[]

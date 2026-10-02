@@ -40,7 +40,13 @@ Do this once per environment (development, staging, production). Each environmen
 1. In ZeptoMail, verify the `justgifter.com` domain (add the SPF/DKIM records it lists to your DNS, plus a DMARC record).
 2. Mail Agents → your agent → SMTP: host `smtp.zeptomail.com`, port 465 (SSL), username `emailapikey`, password = the generated SMTP password.
 3. Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` (any `@justgifter.com` sender). Set `SEND_REAL_EMAIL=true` **only in production**.
-4. Supabase Auth emails: Dashboard → Authentication → SMTP → use the same ZeptoMail credentials.
+4. Supabase Auth emails (sign-in codes) are written by our `auth-email` Edge Function, not dashboard templates:
+   - Deploy it: `supabase functions deploy auth-email --use-api` (JWT verification is off in `config.toml`; Auth signs each request).
+   - Dashboard → Authentication → Hooks → **Send Email** → HTTPS → `https://<project-ref>.supabase.co/functions/v1/auth-email` → generate a secret.
+   - `supabase secrets set SEND_EMAIL_HOOK_SECRET='v1,whsec_…'` (the generated value).
+   - Authentication → Sign In / Providers → Email: set the OTP expiry to 600 seconds (it must match `AUTH_CODE_SECONDS`).
+   - Add `https://justgifter.com/**` to Authentication → URL Configuration → Redirect URLs. The app passes where the person was heading, and the email is tailored to it.
+   - With the hook on, Supabase's own SMTP settings and templates are no longer used.
 5. The outbox records provider acceptance only; check ZeptoMail's processed/bounce logs for delivery.
 
 ## 4. Claude (gift assistant and page designer)

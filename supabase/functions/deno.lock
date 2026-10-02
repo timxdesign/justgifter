@@ -3,7 +3,8 @@
   "specifiers": {
     "npm:@anthropic-ai/sdk@*": "0.129.0",
     "npm:@supabase/supabase-js@2": "2.117.2",
-    "npm:nodemailer@6": "6.10.1"
+    "npm:nodemailer@6": "6.10.1",
+    "npm:standardwebhooks@1.0.0": "1.0.0"
   },
   "npm": {
     "@anthropic-ai/sdk@0.129.0": {
@@ -81,8 +82,8 @@
     "nodemailer@6.10.1": {
       "integrity": "sha512-Z+iLaBGVaSjbIzQ4pX6XV41HrooLsQ10ZWPUehGmuantvzWoDVBnmsdUcOIDM1t+yPor5pDhVlDESgOMEGxhHA=="
     },
-    "standardwebhooks@1.1.1": {
-      "integrity": "sha512-bCbX9ZEyFkWPsRz7Bl3NuQUJohmwGSev/yhr7vhaGPlc4AfIrspIRa6cPTBuI1ItmrTDJ4d/S2hCsfe4+vQGnQ==",
+    "standardwebhooks@1.0.0": {
+      "integrity": "sha512-BbHGOQK9olHPMvQNHWul6MYlrRTAOKn03rOe4A8O3CLWhNf4YHBqq2HJKKC+sfqpxiBY52pNeesD6jIiLDz8jg==",
       "dependencies": [
         "@stablelib/base64",
         "fast-sha256"

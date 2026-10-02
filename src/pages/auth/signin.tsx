@@ -50,7 +50,7 @@ export default function SignInPage() {
           <div className="flex flex-col gap-4">
             <OtpVerify
               destination={maskContact(email)}
-              send={async () => (await getApi()).signInWithEmail(email)}
+              send={async () => (await getApi()).signInWithEmail(email, next)}
               verify={async (code) => {
                 await (await getApi()).verifyEmailCode(email, code)
                 await refresh()

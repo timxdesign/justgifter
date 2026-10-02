@@ -42,7 +42,7 @@ export const gifts: Record<string, Handler> = {
     if (!g) throw fail("not_found", "This gift link isn't valid.")
     const to = g.recipientEmail ?? g.recipientPhone
     if (!to) throw fail("unavailable", "We can't verify this gift automatically. Contact support for help.")
-    await issueOtp(`gift:${g.id}`, to, "Your gift verification code", (code) => `Your code is ${code}. It expires in 10 minutes.`)
+    await issueOtp(`gift:${g.id}`, to, { kind: "gift", from: g.anonymous ? undefined : g.senderDisplayName }, g.recipientName.split(" ")[0])
     return {}
   },
 

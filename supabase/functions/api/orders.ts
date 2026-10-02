@@ -68,7 +68,7 @@ export const orders: Record<string, Handler> = {
     const email = str(args.email, "email", 200).trim().toLowerCase()
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw fail("validation", "Enter a valid email address.")
     // Identical response whether or not orders exist for this email (no enumeration, SEC 03).
-    await issueOtp(`orders:${email}`, email, "Your order access code", (code) => `Use ${code} to view your JustGifter orders. It expires in 10 minutes.`)
+    await issueOtp(`orders:${email}`, email, { kind: "orders" })
     return {}
   },
 

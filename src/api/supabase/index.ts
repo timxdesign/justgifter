@@ -61,8 +61,14 @@ export async function createSupabaseApi(): Promise<Api> {
       if (!data.session) return null
       return call<SessionUser | null>("getSession")
     },
-    async signInWithEmail(email) {
-      const { error } = await sb.auth.signInWithOtp({ email: email.trim().toLowerCase(), options: { shouldCreateUser: true } })
+    async signInWithEmail(email, next) {
+      // The redirect is never followed (sign-in uses the code), but it tells the email hook why
+      // the code was requested so the message can match. It must be in Auth → URL Configuration.
+      const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/"
+      const { error } = await sb.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { shouldCreateUser: true, emailRedirectTo: new URL(safeNext, location.origin).toString() },
+      })
       // Same message either way to avoid account enumeration; only surface rate limits.
       if (error && /rate|seconds/i.test(error.message)) throw new ApiError("rate_limited", "Too many codes requested. Wait a minute before asking for another.")
       return {}

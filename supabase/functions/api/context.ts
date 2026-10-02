@@ -3,7 +3,8 @@ import type { Caller } from "../_shared/auth.ts"
 import { fail } from "../_shared/http.ts"
 import { db, must } from "../_shared/db.ts"
 import { randomOtp, safeEqual, sha256Hex } from "../_shared/domain/index.ts"
-import { enqueue } from "../_shared/notify.ts"
+import { codeEmail, type CodePurpose } from "../_shared/email/codes.ts"
+import { sendNow } from "../_shared/email/send.ts"
 
 export interface Ctx {
   req: Request
@@ -17,14 +18,24 @@ export const str = (v: unknown, name: string, max = 500): string => {
   return v.slice(0, max)
 }
 
-/** One-time codes are stored hashed, expire in 10 minutes, are rate limited and allow 5 attempts. */
-export async function issueOtp(key: string, to: string, subject: string, bodyFor: (code: string) => string) {
+/**
+ * One-time codes are stored hashed, expire in 10 minutes, are rate limited and allow 5 attempts.
+ * They're emailed immediately (not through the outbox) so the plain code is never stored.
+ */
+export async function issueOtp(key: string, to: string, purpose: CodePurpose, name?: string | null) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) throw fail("unavailable", "We can only send codes by email for now. Contact support for help.")
   const since = new Date(Date.now() - 60_000).toISOString()
   const { count } = await db().from("otps").select("id", { count: "exact", head: true }).eq("key", key).gt("created_at", since)
   if ((count ?? 0) >= 3) throw fail("rate_limited", "Too many codes requested. Wait a minute before asking for another.")
   const code = randomOtp()
   must(await db().from("otps").insert({ key, code_hash: await sha256Hex(`${key}:${code}`), expires_at: new Date(Date.now() + 10 * 60_000).toISOString() }))
-  await enqueue({ to, kind: "otp", subject, body: bodyFor(code) })
+  try {
+    await sendNow(to, codeEmail(purpose, { to, code, name }))
+  } catch (e) {
+    console.error("code email failed", e)
+    await db().from("otps").delete().eq("key", key)
+    throw fail("unavailable", "We couldn't send your code just now. Try again in a minute.")
+  }
 }
 
 export async function consumeOtp(key: string, code: string) {
