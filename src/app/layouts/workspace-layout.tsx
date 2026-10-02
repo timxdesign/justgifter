@@ -40,6 +40,7 @@ interface NavItem {
   end?: boolean
   count?: number
   ownerOnly?: boolean
+  adminOnly?: boolean
 }
 
 export function WorkspaceLayout({ area }: { area: "vendor" | "admin" }) {
@@ -103,13 +104,14 @@ function SidebarContent({ area }: { area: "vendor" | "admin" }) {
     { to: "/admin/storefronts", label: "Storefronts", icon: Shop2Icon },
     { to: "/admin/refunds", label: "Refunds", icon: RestartIcon, count: ops.data?.stuckRefunds },
     { to: "/admin/cases", label: "Support cases", icon: ChatRoundDotsIcon, count: ops.data?.openCases },
-    { to: "/admin/reconciliation", label: "Reconciliation", icon: RoundTransferHorizontalIcon, count: ops.data?.unmatchedPayments },
+    { to: "/admin/reconciliation", label: "Reconciliation", icon: RoundTransferHorizontalIcon, count: ops.data?.unmatchedPayments, adminOnly: true },
     { to: "/admin/reports", label: "Content reports", icon: FlagIcon, count: ops.data?.openReports },
     { to: "/admin/templates", label: "Templates", icon: LayersIcon },
     { to: "/admin/jobs", label: "Scheduled jobs", icon: ServerSquareIcon, count: ops.data?.failedJobs },
-    { to: "/admin/audit", label: "Audit log", icon: DocumentTextIcon },
+    { to: "/admin/audit", label: "Audit log", icon: DocumentTextIcon, adminOnly: true },
+    { to: "/admin/team", label: "Team", icon: UsersGroupRoundedIcon, adminOnly: true },
   ]
-  const items = area === "vendor" ? vendorNav.filter((n) => !n.ownerOnly || isOwner) : adminNav
+  const items = area === "vendor" ? vendorNav.filter((n) => !n.ownerOnly || isOwner) : adminNav.filter((n) => !n.adminOnly || hasRole("admin"))
   const vendorName = ws.data?.vendor.name
 
   return (

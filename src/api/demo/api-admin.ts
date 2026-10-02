@@ -7,8 +7,9 @@ import {
   LAUNCH_TIMEZONE,
   toDateOnly,
   addDays,
+  uid,
 } from "@domain/index.ts"
-import type { Api, AdminOrderRow, OpsOverview } from "../types"
+import type { Api, AdminOrderRow, OpsOverview, PlatformRole, Role } from "../types"
 import { ApiError } from "../errors"
 import { clone, latency, type Store } from "./store"
 import { orderSummary } from "./views"
@@ -18,7 +19,7 @@ import { giftView, orderDetail } from "./api-orders"
 export function adminApi(s: Store): Pick<Api,
   | "getOpsOverview" | "listVendorsForReview" | "reviewVendor" | "listModerationQueue" | "moderateListing" | "listAllOrders" | "getAdminOrder" | "adminOrderAction"
   | "listRefunds" | "refundAction" | "listCases" | "updateCase" | "listReconciliation" | "listReports" | "actionReport" | "listAuditLog" | "listJobs" | "retryJob" | "runDueJobs"
-  | "listStorefrontsForModeration" | "setStorefrontModeration"
+  | "listStorefrontsForModeration" | "setStorefrontModeration" | "listTeam" | "inviteTeamMember" | "revokeTeamInvite" | "setTeamRole"
 > {
   const staff = () => s.requireRole("admin", "support")
   const admin = () => s.requireRole("admin")
@@ -308,7 +309,66 @@ export function adminApi(s: Store): Pick<Api,
       s.audit(u.email, `storefront.${action}`, "storefront", sf.id, reason)
       s.persist()
     },
+
+    async listTeam() {
+      await latency(150)
+      const u = admin()
+      const now = s.nowIso()
+      const members = s.db.users
+        .filter((x) => platformRoleOf(x.roles))
+        .map((x) => ({ userId: x.id, name: x.name, email: x.email, role: platformRoleOf(x.roles)!, mfaEnrolled: true, isYou: x.id === u.id }))
+        .sort((a, b) => Number(b.isYou) - Number(a.isYou) || (a.role === b.role ? 0 : a.role === "admin" ? -1 : 1))
+      const invites = s.db.platformInvites.filter((i) => i.status === "pending" && i.expiresAt > now).map(({ status: _, ...i }) => i)
+      return clone({ members, invites })
+    },
+
+    async inviteTeamMember({ email: raw, role, note }) {
+      await latency(300)
+      const u = admin()
+      const email = raw.trim().toLowerCase()
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError("validation", "Enter a valid email address.")
+      if (role !== "admin" && role !== "support") throw new ApiError("validation", "Choose Admin or Support.")
+      const current = platformRoleOf(s.db.users.find((x) => x.email === email)?.roles ?? [])
+      if (current === "admin" || current === role) throw new ApiError("conflict", `${email} already has ${current} access.`)
+      s.db.platformInvites.forEach((i) => { if (i.email === email && i.status === "pending") i.status = "revoked" })
+      const id = uid("inv")
+      s.db.platformInvites.unshift({ id, email, role, invitedBy: u.email, note: note?.trim() || undefined, createdAt: s.nowIso(), expiresAt: addHours(s.nowIso(), 7 * 24), status: "pending" })
+      s.notify({ to: email, kind: "team_invite", subject: `${u.name} invited you to the JustGifter ${role} team`, body: "Sign in with this email address to accept. You'll set up two-step sign-in first.", link: { label: "Accept invitation", href: "/signin?next=/admin" } })
+      s.audit(u.email, "team.invited", "invite", id, `${email} as ${role}`)
+      s.persist()
+    },
+
+    async revokeTeamInvite(inviteId) {
+      await latency(200)
+      const u = admin()
+      const inv = s.db.platformInvites.find((i) => i.id === inviteId && i.status === "pending")
+      if (!inv) throw new ApiError("not_found", "That invitation was already used or cancelled.")
+      inv.status = "revoked"
+      s.audit(u.email, "team.invite_revoked", "invite", inv.id, `${inv.email} (${inv.role})`)
+      s.persist()
+    },
+
+    async setTeamRole(userId, role, reason) {
+      await latency(300)
+      const u = admin()
+      if (!reason.trim()) throw new ApiError("validation", "Add a reason.")
+      if (userId === u.id) throw new ApiError("forbidden", "You can't change your own access. Ask another admin.")
+      const target = s.db.users.find((x) => x.id === userId)
+      if (!target || !platformRoleOf(target.roles)) throw new ApiError("not_found", "That person isn't on the team.")
+      const before = platformRoleOf(target.roles)
+      target.roles = withPlatformRole(target.roles, role)
+      s.audit(u.email, role === "none" ? "team.removed" : "team.role_changed", "user", userId, `${target.email}: ${before} → ${role}. ${reason}`)
+      s.persist()
+    },
   }
+}
+
+export const platformRoleOf = (roles: Role[]): PlatformRole | null => (roles.includes("admin") ? "admin" : roles.includes("support") ? "support" : null)
+
+export function withPlatformRole(roles: Role[], role: PlatformRole | "none"): Role[] {
+  const base = roles.filter((r) => r !== "admin" && r !== "support")
+  if (!base.includes("customer")) base.unshift("customer")
+  return role === "admin" ? [...base, "admin", "support"] : role === "support" ? [...base, "support"] : base
 }
 
 const statusRank = (st: string) => ["submitted", "under_review", "needs_information", "suspended", "approved", "rejected", "draft"].indexOf(st)

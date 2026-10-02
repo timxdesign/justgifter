@@ -6,6 +6,7 @@ import { fail } from "../_shared/http.ts"
 import { requireRole } from "../_shared/auth.ts"
 import { cancelWithRefund, completeRefund, runJob, submitRefund, transition } from "../_shared/commerce.ts"
 import { enqueue } from "../_shared/notify.ts"
+import { INVITE_DAYS, type PlatformRole, platformRoleOf, withPlatformRole } from "../_shared/team.ts"
 import { audit, giftBy, orderBy, saveGift, saveOrder, settings, timelineEntry, toGift, toOrder, toStorefront, toVendor } from "../_shared/repo.ts"
 import { caseView, giftView, orderDetail, orderSummary } from "../_shared/views.ts"
 import type { Handler } from "./context.ts"
@@ -265,6 +266,77 @@ export const admin: Record<string, Handler> = {
     if (!reason.trim()) throw fail("validation", "Add a reason.")
     await db().from("storefronts").update({ status: args.action === "unpublish" ? "paused" : "published", updated_at: new Date().toISOString() }).eq("id", str(args.storefrontId, "storefront"))
     await audit(u.email, `storefront.${args.action}`, "storefront", String(args.storefrontId), reason)
+  },
+
+  // ---------------------------------------------------------------- operations team
+
+  async listTeam({ caller }) {
+    const u = adminOnly(caller)
+    const people = must(await db().from("profiles").select("id, name, email, roles").overlaps("roles", ["admin", "support"]).order("created_at")) as any[]
+    const members = await Promise.all(people.map(async (p) => {
+      const { data } = await db().auth.admin.mfa.listFactors({ userId: p.id })
+      return {
+        userId: p.id, name: p.name, email: p.email, role: platformRoleOf(p.roles)!,
+        mfaEnrolled: (data?.factors ?? []).some((f: any) => f.status === "verified"), isYou: p.id === u.userId,
+      }
+    }))
+    members.sort((a, b) => Number(b.isYou) - Number(a.isYou) || (a.role === b.role ? 0 : a.role === "admin" ? -1 : 1))
+    const invites = (must(await db().from("platform_invites").select("*").eq("status", "pending").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false })) as any[])
+      .map((i) => ({ id: i.id, email: i.email, role: i.role, invitedBy: i.invited_by, note: i.note ?? undefined, createdAt: i.created_at, expiresAt: i.expires_at }))
+    return { members, invites }
+  },
+
+  async inviteTeamMember({ caller, args }) {
+    const u = adminOnly(caller)
+    const email = str(args.input?.email, "email", 200).trim().toLowerCase()
+    const role = args.input?.role as PlatformRole
+    const note = String(args.input?.note ?? "").trim().slice(0, 300)
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw fail("validation", "Enter a valid email address.")
+    if (role !== "admin" && role !== "support") throw fail("validation", "Choose Admin or Support.")
+    const existing = must(await db().from("profiles").select("roles").eq("email", email).maybeSingle()) as any
+    const current = existing ? platformRoleOf(existing.roles) : null
+    if (current === "admin" || current === role) throw fail("conflict", `${email} already has ${current === "admin" ? "admin" : "support"} access.`)
+    // Re-inviting replaces any pending invitation, so the newest role and expiry win.
+    await db().from("platform_invites").update({ status: "revoked", responded_at: new Date().toISOString() }).eq("email", email).eq("status", "pending")
+    const id = uid("inv")
+    must(await db().from("platform_invites").insert({ id, email, role, invited_by: u.email, note: note || null, expires_at: new Date(Date.now() + INVITE_DAYS * 86_400_000).toISOString() }))
+    const who = u.name && u.name.toLowerCase() !== u.email.split("@")[0] ? u.name : u.email
+    await enqueue({
+      to: email, kind: "team_invite",
+      subject: `${who} invited you to the JustGifter ${role === "admin" ? "admin" : "support"} team`,
+      body: `${role === "admin" ? "As an admin you'll review vendors and listings, manage orders, refunds and support, and decide who else has access." : "As part of support you'll help customers with orders, gifts, delivery issues and refunds."}${note ? ` ${who} added: “${note}”` : ""} Sign in with this email address to accept. You'll set up two-step sign-in with an authenticator app first. The invitation expires in ${INVITE_DAYS} days.`,
+      link: { label: "Accept invitation", href: "/signin?next=/admin" },
+    })
+    await audit(u.email, "team.invited", "invite", id, `${email} as ${role}${note ? ` — ${note}` : ""}`)
+  },
+
+  async revokeTeamInvite({ caller, args }) {
+    const u = adminOnly(caller)
+    const inv = must(await db().from("platform_invites").select("*").eq("id", str(args.inviteId, "invite")).eq("status", "pending").maybeSingle()) as any
+    if (!inv) throw fail("not_found", "That invitation was already used or cancelled.")
+    must(await db().from("platform_invites").update({ status: "revoked", responded_at: new Date().toISOString() }).eq("id", inv.id))
+    await audit(u.email, "team.invite_revoked", "invite", inv.id, `${inv.email} (${inv.role})`)
+  },
+
+  async setTeamRole({ caller, args }) {
+    const u = adminOnly(caller)
+    const userId = str(args.userId, "user")
+    const role = args.role as PlatformRole | "none"
+    const reason = String(args.reason ?? "").trim().slice(0, 500)
+    if (!["admin", "support", "none"].includes(role)) throw fail("validation", "Choose a role.")
+    if (!reason) throw fail("validation", "Add a reason.")
+    if (userId === u.userId) throw fail("forbidden", "You can't change your own access. Ask another admin.")
+    const target = must(await db().from("profiles").select("id, email, roles").eq("id", userId).maybeSingle()) as any
+    if (!target || !platformRoleOf(target.roles)) throw fail("not_found", "That person isn't on the team.")
+    const roles = withPlatformRole(target.roles, role)
+    must(await db().from("profiles").update({ roles }).eq("id", userId))
+    await audit(u.email, role === "none" ? "team.removed" : "team.role_changed", "user", userId, `${target.email}: ${platformRoleOf(target.roles)} → ${role}. ${reason}`)
+    await enqueue({
+      to: target.email, kind: "status",
+      subject: role === "none" ? "Your JustGifter operations access was removed" : `You're now ${role === "admin" ? "an admin" : "on the support team"} at JustGifter`,
+      body: role === "none" ? "You can still use JustGifter as a customer. If you think this is a mistake, contact an admin." : "The change applies the next time you open the operations workspace.",
+      link: role === "none" ? undefined : { label: "Open operations", href: "/admin" },
+    })
   },
 }
 

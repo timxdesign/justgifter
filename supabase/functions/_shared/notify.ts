@@ -39,6 +39,7 @@ const BANNERS: Record<string, Banner> = {
   refund: "parcel",
   vendor_new_order: "store",
   host: "balloons",
+  team_invite: "shield",
 }
 
 const EYEBROWS: Record<string, string> = {
@@ -48,6 +49,7 @@ const EYEBROWS: Record<string, string> = {
   refund: "Refund",
   vendor_new_order: "New order",
   host: "Occasion page",
+  team_invite: "Team invitation",
 }
 
 /** Queued notifications share the code emails' layout; artwork follows the kind of message. */
@@ -61,6 +63,7 @@ function mail(m: { recipient: string; kind: string; subject: string; body: strin
     cta: m.link_href ? { label: m.link_label ?? "Open JustGifter", href: m.link_href } : undefined,
     reason: m.kind === "gift_reveal" || m.kind === "claim_reminder"
       ? "Someone sent you a gift on JustGifter. Gift links are private to you, so please don't forward this email."
+      : m.kind === "team_invite" ? "You're getting this because a JustGifter admin invited this address to the operations team. If you weren't expecting it, you can ignore this email."
       : m.kind === "vendor_new_order" ? "You're getting this because you run a store on JustGifter." : "You're getting this because of an order, gift or account activity on JustGifter.",
     to: m.recipient,
   })

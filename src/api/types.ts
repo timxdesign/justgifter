@@ -54,6 +54,29 @@ import type {
 
 export type Role = "customer" | "vendor_owner" | "vendor_staff" | "support" | "admin"
 
+/** Operations team access. Admin includes everything support can do. */
+export type PlatformRole = "admin" | "support"
+
+export interface TeamMember {
+  userId: string
+  name: string
+  email: string
+  role: PlatformRole
+  /** Whether an authenticator app is set up (required before the workspace opens). */
+  mfaEnrolled: boolean
+  isYou: boolean
+}
+
+export interface TeamInvite {
+  id: string
+  email: string
+  role: PlatformRole
+  invitedBy: string
+  note?: string
+  createdAt: string
+  expiresAt: string
+}
+
 export interface SessionUser {
   id: string
   name: string
@@ -782,6 +805,12 @@ export interface Api {
   runDueJobs(): Promise<{ processed: number }>
   listStorefrontsForModeration(): Promise<(Storefront & { vendorName: string; vendorStatus: VendorStatus })[]>
   setStorefrontModeration(storefrontId: string, action: "unpublish" | "restore", reason: string): Promise<void>
+  /** Admins only. */
+  listTeam(): Promise<{ members: TeamMember[]; invites: TeamInvite[] }>
+  inviteTeamMember(input: { email: string; role: PlatformRole; note?: string }): Promise<void>
+  revokeTeamInvite(inviteId: string): Promise<void>
+  /** "none" removes operations access; the account stays a customer. */
+  setTeamRole(userId: string, role: PlatformRole | "none", reason: string): Promise<void>
 }
 
 export type { Gift, Order, OrderLine, PriceBreakdown }

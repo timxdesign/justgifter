@@ -21,7 +21,7 @@ import type {
   Iso,
 } from "@domain/index.ts"
 import { DEFAULT_SETTINGS, uid } from "@domain/index.ts"
-import type { ReconciliationRow, Role, StaffMember } from "../types"
+import type { ReconciliationRow, Role, StaffMember, TeamInvite } from "../types"
 import { ApiError } from "../errors"
 
 /**
@@ -49,7 +49,7 @@ export interface OutboxMessage {
   body: string
   /** Primary call to action, e.g. a gift link. */
   link?: { label: string; href: string }
-  kind: "receipt" | "gift_reveal" | "claim_reminder" | "vendor_new_order" | "otp" | "status" | "host" | "refund" | "ops"
+  kind: "receipt" | "gift_reveal" | "claim_reminder" | "vendor_new_order" | "otp" | "status" | "host" | "refund" | "ops" | "team_invite"
   /** Provider acceptance only — never treated as confirmed inbox delivery (§14 Zoho requirements). */
   status: "accepted" | "failed"
 }
@@ -107,9 +107,10 @@ export interface DemoDb {
   blockedContacts: string[]
   /** Address-unknown gifts whose final address falls outside the quoted zone (§3). */
   revisedQuotes: Record<string, { zoneId: import("@domain/index.ts").ZoneId; fee: number | null; address: DeliveryAddress }>
+  platformInvites: (TeamInvite & { status: "pending" | "accepted" | "revoked" })[]
 }
 
-export const DB_VERSION = 8
+export const DB_VERSION = 9
 const STORAGE_KEY = "jg-demo-db"
 
 function loadDb(): DemoDb | null {
@@ -249,6 +250,7 @@ export const emptyDb = (): DemoDb => ({
   pendingBankChanges: {},
   blockedContacts: [],
   revisedQuotes: {},
+  platformInvites: [],
 })
 
 export const clone = <T,>(v: T): T => (v === undefined ? v : structuredClone(v))

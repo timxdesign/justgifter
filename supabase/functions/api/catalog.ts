@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import type { Product, ZoneId } from "../_shared/domain/index.ts"
+import { acceptPlatformInvite } from "../_shared/team.ts"
 import { checkDeliveryDate, deliverableDates, extractPreferences, limitingMessage, recommend, sanitisePreferences, toDateOnly, uid } from "../_shared/domain/index.ts"
 import { db, must } from "../_shared/db.ts"
 import { fail } from "../_shared/http.ts"
@@ -46,6 +47,7 @@ export const catalog: Record<string, Handler> = {
         await db().from("events").update({ co_hosts: ev.co_hosts.map((c: any) => (c.email === caller.email && c.status === "invited" ? { ...c, status: "accepted", userId: caller.userId, respondedAt: new Date().toISOString() } : c)) }).eq("id", ev.id)
       }
     }
+    await acceptPlatformInvite(caller)
     return { id: caller.userId, name: caller.name, email: caller.email, emailVerified: caller.emailVerified, roles: caller.roles, vendorId: caller.vendorId, mfaVerified: caller.aal === "aal2" }
   },
 

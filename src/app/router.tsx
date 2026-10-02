@@ -117,6 +117,7 @@ export const router = createBrowserRouter([
           { path: "templates", element: page(() => import("@/pages/admin/templates")) },
           { path: "jobs", element: page(() => import("@/pages/admin/jobs")) },
           { path: "audit", element: page(() => import("@/pages/admin/audit")) },
+          { path: "team", element: page(() => import("@/pages/admin/team")) },
         ],
       },
       { path: "orders", element: <Navigate to="/account" replace /> },

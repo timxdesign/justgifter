@@ -12,6 +12,7 @@ import {
   safeEqual,
 } from "@domain/index.ts"
 import type { Api, AssistantPick, DeliveryQuote, GiftGuide, ProductCard, ProductPage, SessionUser } from "../types"
+import { platformRoleOf, withPlatformRole } from "./api-admin"
 import { ApiError } from "../errors"
 import { clone, latency, type Store, type DemoUser } from "./store"
 import { isPurchasable, productCard, vendorPublic } from "./views"
@@ -78,6 +79,13 @@ export function authApi(s: Store): Pick<Api, "getSession" | "signInWithEmail" | 
       }
       user.emailVerified = true
       s.db.sessionUserId = user.id
+      // A live operations-team invitation for this verified email is accepted on sign-in.
+      const invite = s.db.platformInvites.find((i) => i.email === normalised && i.status === "pending" && i.expiresAt > s.nowIso())
+      if (invite) {
+        user.roles = withPlatformRole(user.roles, platformRoleOf(user.roles) === "admin" ? "admin" : invite.role)
+        invite.status = "accepted"
+        s.audit(normalised, "team.joined", "user", user.id, `Accepted ${invite.role} invitation from ${invite.invitedBy}`)
+      }
       // Link guest orders placed with this email to the new session.
       s.db.orders.filter((o) => o.buyerEmail === normalised && !o.buyerUserId).forEach((o) => (o.buyerUserId = user!.id))
       s.persist()

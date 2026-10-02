@@ -215,5 +215,9 @@ export async function createSupabaseApi(): Promise<Api> {
     runDueJobs: () => call("runDueJobs"),
     listStorefrontsForModeration: () => call("listStorefrontsForModeration"),
     setStorefrontModeration: (storefrontId, action, reason) => call("setStorefrontModeration", { storefrontId, action, reason }),
+    listTeam: () => call("listTeam"),
+    inviteTeamMember: (input) => call("inviteTeamMember", { input }),
+    revokeTeamInvite: (inviteId) => call("revokeTeamInvite", { inviteId }),
+    setTeamRole: (userId, role, reason) => call("setTeamRole", { userId, role, reason }),
   }
 }

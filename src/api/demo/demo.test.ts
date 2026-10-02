@@ -242,3 +242,35 @@ describe("vendor and operations", () => {
     expect(await api.getStorefront("bisi-flowers")).toEqual({ kind: "redirect", slug: "bloom-and-bisi" })
   })
 })
+
+describe("operations team", () => {
+  it("admins invite by email; the role is granted on verified sign-in and can be removed", async () => {
+    await api.switchPersona("usr_kelechi")
+    await api.inviteTeamMember({ email: "New.Ops@Example.com", role: "support", note: "Welcome!" })
+    let team = await api.listTeam()
+    expect(team.invites.map((i) => [i.email, i.role])).toEqual([["new.ops@example.com", "support"]])
+    expect(api.store.db.outbox.some((m) => m.to === "new.ops@example.com" && m.kind === "team_invite")).toBe(true)
+    await expect(api.inviteTeamMember({ email: "kelechi@justgifter.example", role: "support" })).rejects.toThrow(/already has/)
+
+    await api.switchPersona("guest")
+    const { devCode } = await api.signInWithEmail("new.ops@example.com")
+    const joined = await api.verifyEmailCode("new.ops@example.com", devCode!)
+    expect(joined.roles).toEqual(expect.arrayContaining(["customer", "support"]))
+    expect(joined.roles).not.toContain("admin")
+    await expect(api.listTeam()).rejects.toThrow(/access/)
+
+    await api.switchPersona("usr_kelechi")
+    team = await api.listTeam()
+    expect(team.invites).toHaveLength(0)
+    const member = team.members.find((m) => m.email === "new.ops@example.com")!
+    await expect(api.setTeamRole(team.members.find((m) => m.isYou)!.userId, "none", "test")).rejects.toThrow(/your own access/)
+    await api.setTeamRole(member.userId, "none", "Left the company")
+    expect((await api.listTeam()).members.some((m) => m.email === "new.ops@example.com")).toBe(false)
+    expect(api.store.db.audit.slice(0, 4).map((a) => a.action)).toEqual(expect.arrayContaining(["team.removed", "team.joined", "team.invited"]))
+  })
+
+  it("non-admins can't invite", async () => {
+    await api.switchPersona("usr_ada")
+    await expect(api.inviteTeamMember({ email: "x@example.com", role: "admin" })).rejects.toThrow(/access/)
+  })
+})
