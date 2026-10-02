@@ -338,6 +338,7 @@ export async function buildDemoDb(): Promise<Store["db"]> {
     ownerName: v.id === "ven_bloom" ? "Bisi Adeyemi" : `${v.name} owner`,
     ownerEmail: db.users.find((u) => u.vendorId === v.id && u.roles.includes("vendor_owner"))?.email ?? "owner@example.com",
     ownerPhone: "+234 800 555 0000",
+    responses: [],
     address: `${v.city}, Nigeria`,
     payoutBank: "GTBank",
     payoutAccountMasked: "•••• 4821",

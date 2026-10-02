@@ -19,7 +19,7 @@ import { giftView, orderDetail } from "./api-orders"
 export function adminApi(s: Store): Pick<Api,
   | "getOpsOverview" | "listVendorsForReview" | "reviewVendor" | "listModerationQueue" | "moderateListing" | "listAllOrders" | "getAdminOrder" | "adminOrderAction"
   | "listRefunds" | "refundAction" | "listCases" | "updateCase" | "listReconciliation" | "listReports" | "actionReport" | "listAuditLog" | "listJobs" | "retryJob" | "runDueJobs"
-  | "listStorefrontsForModeration" | "setStorefrontModeration" | "listTeam" | "inviteTeamMember" | "revokeTeamInvite" | "setTeamRole"
+  | "listStorefrontsForModeration" | "setStorefrontModeration" | "getApplicationDocumentUrl" | "listTeam" | "inviteTeamMember" | "revokeTeamInvite" | "setTeamRole"
 > {
   const staff = () => s.requireRole("admin", "support")
   const admin = () => s.requireRole("admin")
@@ -89,7 +89,7 @@ export function adminApi(s: Store): Pick<Api,
       const app = s.db.applications.find((a) => a.vendorId === vendorId)
       if (!vendor) throw new ApiError("not_found", "Vendor not found.")
       if (["reject", "needs_information", "suspend"].includes(decision) && !reason.trim()) throw new ApiError("validation", "Add a reason — it's recorded and sent to the vendor.")
-      const target = ({ start_review: "under_review", approve: "approved", reject: "rejected", needs_information: "needs_information", suspend: "suspended", reinstate: "approved" } as const)[decision]
+      const target = ({ start_review: "under_review", resume_review: "under_review", approve: "approved", reject: "rejected", needs_information: "needs_information", suspend: "suspended", reinstate: "approved" } as const)[decision]
       assertTransition(VENDOR_TRANSITIONS, vendor.status, target, "vendor")
       vendor.status = target
       if (target === "approved") vendor.verified = true
@@ -308,6 +308,16 @@ export function adminApi(s: Store): Pick<Api,
       sf.status = action === "unpublish" ? "paused" : "published"
       s.audit(u.email, `storefront.${action}`, "storefront", sf.id, reason)
       s.persist()
+    },
+
+    async getApplicationDocumentUrl(vendorId, path) {
+      await latency(150)
+      const u = staff()
+      const doc = s.db.applications.find((a) => a.vendorId === vendorId)?.responses.flatMap((r) => r.documents).find((d) => d.path === path)
+      if (!doc) throw new ApiError("not_found", "Document not found.")
+      if (!doc.path.startsWith("data:")) throw new ApiError("unavailable", "Large files can't be previewed in the demo. With Supabase they open from private storage.")
+      s.audit(u.email, "vendor.document_viewed", "vendor", vendorId, doc.name)
+      return doc.path
     },
 
     async listTeam() {

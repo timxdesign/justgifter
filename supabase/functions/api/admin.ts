@@ -7,7 +7,7 @@ import { requireRole } from "../_shared/auth.ts"
 import { cancelWithRefund, completeRefund, runJob, submitRefund, transition } from "../_shared/commerce.ts"
 import { enqueue } from "../_shared/notify.ts"
 import { INVITE_DAYS, type PlatformRole, platformRoleOf, withPlatformRole } from "../_shared/team.ts"
-import { audit, giftBy, orderBy, saveGift, saveOrder, settings, timelineEntry, toGift, toOrder, toStorefront, toVendor } from "../_shared/repo.ts"
+import { audit, giftBy, orderBy, saveGift, saveOrder, settings, timelineEntry, toApplication, toGift, toOrder, toStorefront, toVendor } from "../_shared/repo.ts"
 import { caseView, giftView, orderDetail, orderSummary } from "../_shared/views.ts"
 import type { Handler } from "./context.ts"
 import { str } from "./context.ts"
@@ -75,7 +75,7 @@ export const admin: Record<string, Handler> = {
       const a = apps.find((x) => x.vendor_id === v.id)
       return {
         vendor: toVendor(v), productCount: prods.filter((p) => p.vendor_id === v.id).length, openOrders: open.filter((o) => o.vendor_id === v.id).length,
-        application: a ? { id: a.id, vendorId: a.vendor_id, status: a.status, submittedAt: a.submitted_at, reviewer: a.reviewer, decisionReason: a.decision_reason, history: a.history, ownerName: a.owner_name, ownerEmail: a.owner_email, ownerPhone: a.owner_phone, address: a.address, payoutBank: a.payout_bank, payoutAccountMasked: a.payout_account_masked, termsAcceptedAt: a.terms_accepted_at } : null,
+        application: a ? toApplication(a) : null,
       }
     })
   },
@@ -84,7 +84,7 @@ export const admin: Record<string, Handler> = {
     const u = adminOnly(caller)
     const decision = String(args.decision)
     const reason = String(args.reason ?? "").slice(0, 500)
-    const target = ({ start_review: "under_review", approve: "approved", reject: "rejected", needs_information: "needs_information", suspend: "suspended", reinstate: "approved" } as Record<string, any>)[decision]
+    const target = ({ start_review: "under_review", resume_review: "under_review", approve: "approved", reject: "rejected", needs_information: "needs_information", suspend: "suspended", reinstate: "approved" } as Record<string, any>)[decision]
     if (!target) throw fail("validation", "Unknown decision.")
     if (["reject", "needs_information", "suspend"].includes(decision) && !reason.trim()) throw fail("validation", "Add a reason — it's recorded and sent to the vendor.")
     const v = toVendor(must(await db().from("vendors").select("*").eq("id", str(args.vendorId, "vendor")).single()))
@@ -93,7 +93,16 @@ export const admin: Record<string, Handler> = {
     const app = must(await db().from("vendor_applications").select("*").eq("vendor_id", v.id).maybeSingle()) as any
     if (app) await db().from("vendor_applications").update({ status: target, reviewer: u.name || u.email, decision_reason: reason || null, history: [...app.history, { at: new Date().toISOString(), status: target, by: u.name || u.email, reason: reason || undefined }] }).eq("id", app.id)
     if (target === "approved") await db().from("storefronts").upsert({ id: `stf_${v.id}`, vendor_id: v.id, slug: v.slug, status: "draft", headline: v.tagline || v.name, intro: v.about, cover_image: v.coverImage }, { onConflict: "vendor_id", ignoreDuplicates: true })
-    if (app) await enqueue({ to: app.owner_email, kind: "status", subject: `Your JustGifter application: ${target.replace("_", " ")}`, body: reason || "No further action needed.", link: { label: "Open workspace", href: "/vendor" } })
+    if (app) {
+      const mail = ({
+        needs_information: { subject: "We need a little more for your JustGifter application", body: `${reason} Reply and upload documents from your workspace — your application goes straight back to review.`, label: "Reply to our team" },
+        approved: { subject: decision === "reinstate" ? "Your JustGifter store is active again" : "You're approved to sell on JustGifter", body: reason || "Publish your storefront and your products can start taking orders.", label: "Open workspace" },
+        rejected: { subject: "An update on your JustGifter application", body: reason, label: "Open workspace" },
+        suspended: { subject: "Your JustGifter store is paused", body: `${reason} Existing orders still need fulfilling.`, label: "Open workspace" },
+        under_review: { subject: "Your JustGifter application is in review", body: reason || "Our team is reviewing your application now.", label: "Open workspace" },
+      } as Record<string, { subject: string; body: string; label: string }>)[target]
+      if (mail) await enqueue({ to: app.owner_email, kind: "status", subject: mail.subject, body: mail.body, link: { label: mail.label, href: "/vendor" } })
+    }
     await audit(u.email, `vendor.${decision}`, "vendor", v.id, reason)
   },
 
@@ -266,6 +275,19 @@ export const admin: Record<string, Handler> = {
     if (!reason.trim()) throw fail("validation", "Add a reason.")
     await db().from("storefronts").update({ status: args.action === "unpublish" ? "paused" : "published", updated_at: new Date().toISOString() }).eq("id", str(args.storefrontId, "storefront"))
     await audit(u.email, `storefront.${args.action}`, "storefront", String(args.storefrontId), reason)
+  },
+
+  async getApplicationDocumentUrl({ caller, args }) {
+    const u = staff(caller)
+    const vendorId = str(args.vendorId, "vendor")
+    const path = str(args.path, "document")
+    const app = must(await db().from("vendor_applications").select("responses").eq("vendor_id", vendorId).maybeSingle()) as any
+    const known = (app?.responses ?? []).some((r: any) => r.documents.some((d: any) => d.path === path))
+    if (!known || !path.startsWith(`applications/${vendorId}/`)) throw fail("not_found", "Document not found.")
+    const { data, error } = await db().storage.from("private-evidence").createSignedUrl(path, 300)
+    if (error || !data) throw fail("unavailable", "That document isn't available right now.")
+    await audit(u.email, "vendor.document_viewed", "vendor", vendorId, path.split("/").pop() ?? "")
+    return { url: data.signedUrl }
   },
 
   // ---------------------------------------------------------------- operations team

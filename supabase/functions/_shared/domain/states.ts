@@ -49,7 +49,8 @@ export const VENDOR_TRANSITIONS: Record<VendorStatus, VendorStatus[]> = {
   draft: ["submitted"],
   submitted: ["under_review"],
   under_review: ["approved", "rejected", "needs_information"],
-  needs_information: ["submitted"],
+  // The applicant replies (or the team resumes after an off-platform reply), or the team rejects.
+  needs_information: ["submitted", "under_review", "rejected"],
   approved: ["suspended"],
   suspended: ["approved"],
   rejected: [],

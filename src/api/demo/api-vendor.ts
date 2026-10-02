@@ -71,6 +71,7 @@ export function vendorApi(s: Store): Pick<Api,
   | "submitVendorApplication" | "getVendorWorkspace" | "getVendorDashboard" | "listVendorOrders" | "getVendorOrder" | "vendorOrderAction"
   | "listVendorProducts" | "saveVendorProduct" | "updateStock" | "archiveProduct" | "saveStorefront" | "setStorefrontStatus" | "getStorefrontAnalytics"
   | "getPayoutStatement" | "requestBankChange" | "listStaff" | "inviteStaff" | "removeStaff" | "updateVendorSettings" | "uploadMedia"
+  | "uploadApplicationDocument" | "respondToApplication"
 > {
   return {
     async submitVendorApplication(input) {
@@ -97,7 +98,7 @@ export function vendorApi(s: Store): Pick<Api,
       s.db.applications.push({
         id: uid("app"), vendorId: vendor.id, status: "submitted", submittedAt: now, reviewer: null, decisionReason: null,
         history: [{ at: now, status: "submitted", by: user.email }], ownerName: input.ownerName, ownerEmail: input.ownerEmail, ownerPhone: input.ownerPhone,
-        address: input.address, payoutBank: input.payoutBank, payoutAccountMasked: `•••• ${input.payoutAccount.slice(-4)}`, termsAcceptedAt: now,
+        address: input.address, payoutBank: input.payoutBank, payoutAccountMasked: `•••• ${input.payoutAccount.slice(-4)}`, termsAcceptedAt: now, responses: [],
       })
       // Registration creates an application, not permission to sell (§9).
       const u = s.db.users.find((x) => x.id === user.id)!
@@ -107,6 +108,37 @@ export function vendorApi(s: Store): Pick<Api,
       s.audit(user.email, "vendor.apply", "vendor", vendor.id, vendor.name)
       s.persist()
       return { vendorId: vendor.id }
+    },
+
+    async uploadApplicationDocument(file) {
+      await latency(500)
+      const { vendor } = requireOwner(s)
+      if (vendor.status !== "needs_information") throw new ApiError("conflict", "Your application isn't waiting for documents.")
+      if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new ApiError("validation", "Upload a PDF, JPG or PNG.")
+      if (file.size > 10 * 1024 * 1024) throw new ApiError("validation", "Each file must be 10 MB or smaller.")
+      // Demo storage keeps small files as data URLs so admins can open them; larger ones keep metadata only.
+      const path = file.size <= 400_000
+        ? await new Promise<string>((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(String(r.result)); r.onerror = () => reject(new ApiError("validation", "Couldn't read that file.")); r.readAsDataURL(file) })
+        : `applications/${vendor.id}/${uid("doc")}`
+      return { id: uid("doc"), name: file.name, path, size: file.size, type: file.type }
+    },
+
+    async respondToApplication({ message, documents }) {
+      await latency(400)
+      const { vendor, user } = requireOwner(s)
+      if (vendor.status !== "needs_information") throw new ApiError("conflict", "Your application isn't waiting for a reply.")
+      const text = message.trim().slice(0, 2000)
+      if (!text && documents.length === 0) throw new ApiError("validation", "Add a message or attach a document.")
+      const app = s.db.applications.find((a) => a.vendorId === vendor.id)!
+      const now = s.nowIso()
+      const summary = [text && `“${text.length > 140 ? text.slice(0, 140) + "…" : text}”`, documents.length && `${documents.length} document${documents.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
+      app.responses.push({ at: now, by: user.email, message: text, documents: documents.slice(0, 5) })
+      app.status = "under_review"
+      app.history.push({ at: now, status: "under_review", by: user.email, reason: `Replied: ${summary}` })
+      vendor.status = "under_review"
+      s.db.users.filter((u) => u.roles.includes("admin")).forEach((a) => s.notify({ to: a.email, kind: "status", subject: `${vendor.name} replied to your request`, body: `${summary}. The application is back in review.`, link: { label: "Review application", href: "/admin/vendors" } }))
+      s.audit(user.email, "vendor.replied", "vendor", vendor.id, summary)
+      s.persist()
     },
 
     async getVendorWorkspace() {

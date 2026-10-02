@@ -38,6 +38,7 @@ import type {
   SupportCase,
   Vendor,
   VendorApplication,
+  ApplicationDocument,
   VendorStatus,
   WishAvailability,
   WishPriority,
@@ -680,7 +681,7 @@ export interface AdminVendorRow {
 }
 
 export type ModerationDecision = "approve" | "reject"
-export type VendorDecision = "start_review" | "approve" | "reject" | "needs_information" | "suspend" | "reinstate"
+export type VendorDecision = "start_review" | "resume_review" | "approve" | "reject" | "needs_information" | "suspend" | "reinstate"
 export type RefundAction = "approve" | "reject" | "submit" | "mark_completed" | "mark_failed"
 
 export interface Api {
@@ -763,6 +764,10 @@ export interface Api {
   // vendor
   submitVendorApplication(input: VendorApplicationInput): Promise<{ vendorId: string }>
   getVendorWorkspace(): Promise<VendorWorkspace | null>
+  /** Owner only, while the application needs information. PDF, JPG or PNG up to 10 MB. */
+  uploadApplicationDocument(file: File): Promise<ApplicationDocument>
+  /** Sends the reply and puts the application back into review. */
+  respondToApplication(input: { message: string; documents: ApplicationDocument[] }): Promise<void>
   getVendorDashboard(): Promise<VendorDashboard>
   listVendorOrders(filter: { source?: OrderSource; purchaseType?: PurchaseType; status?: "actionable" | "completed" | "all" }): Promise<VendorOrderView[]>
   getVendorOrder(id: string): Promise<VendorOrderView>
@@ -787,6 +792,8 @@ export interface Api {
   getOpsOverview(): Promise<OpsOverview>
   listVendorsForReview(): Promise<AdminVendorRow[]>
   reviewVendor(vendorId: string, decision: VendorDecision, reason: string): Promise<void>
+  /** A short-lived link to an applicant's private document. */
+  getApplicationDocumentUrl(vendorId: string, path: string): Promise<string>
   listModerationQueue(): Promise<(Product & { vendorName: string })[]>
   moderateListing(productId: string, decision: ModerationDecision, note: string): Promise<void>
   listAllOrders(filter: { q?: string; status?: OrderStatus | "exceptions" }): Promise<AdminOrderRow[]>
@@ -813,4 +820,4 @@ export interface Api {
   setTeamRole(userId: string, role: PlatformRole | "none", reason: string): Promise<void>
 }
 
-export type { Gift, Order, OrderLine, PriceBreakdown }
+export type { ApplicationDocument, Gift, Order, OrderLine, PriceBreakdown }

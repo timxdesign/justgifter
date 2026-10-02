@@ -7,13 +7,16 @@ import { fail } from "../_shared/http.ts"
 import { requireRole, requireUser, type Caller } from "../_shared/auth.ts"
 import { cancelWithRefund, transition } from "../_shared/commerce.ts"
 import { enqueue } from "../_shared/notify.ts"
-import { activeHolds, audit, products, saveOrder, toOrder, toStorefront, toVendor } from "../_shared/repo.ts"
+import { activeHolds, audit, products, saveOrder, toApplication, toOrder, toStorefront, toVendor } from "../_shared/repo.ts"
 import { vendorOrderView } from "../_shared/views.ts"
 import type { Handler } from "./context.ts"
 import { consumeOtp, issueOtp, str } from "./context.ts"
 
 const RESERVED = ["admin", "api", "account", "vendor", "vendors", "stores", "store", "justgifter", "support", "help", "checkout", "cart", "orders", "gift", "gifts", "events", "e", "g", "login", "signup", "official", "staff", "security", "paystack"]
 const DISPUTE_WINDOW_DAYS = 7
+
+const DOC_TYPES: Record<string, string> = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" }
+const DOC_MAX_BYTES = 10 * 1024 * 1024
 
 async function vendorCtx(caller: Caller, scope?: "catalogue" | "orders" | "support") {
   const u = requireRole(caller, "vendor_owner", "vendor_staff")
@@ -85,8 +88,52 @@ export const vendor: Record<string, Handler> = {
     const app = must(await db().from("vendor_applications").select("*").eq("vendor_id", caller.vendorId).maybeSingle()) as any
     return {
       vendor: toVendor(v), storefront: sf ? toStorefront(sf) : null, role: caller.roles.includes("vendor_owner") ? "owner" : "staff",
-      application: app ? { id: app.id, vendorId: app.vendor_id, status: app.status, submittedAt: app.submitted_at, reviewer: app.reviewer, decisionReason: app.decision_reason, history: app.history, ownerName: app.owner_name, ownerEmail: app.owner_email, ownerPhone: app.owner_phone, address: app.address, payoutBank: app.payout_bank, payoutAccountMasked: app.payout_account_masked, termsAcceptedAt: app.terms_accepted_at } : null,
+      application: app ? toApplication(app) : null,
     }
+  },
+
+  // ---------------------------------------------------------------- application replies
+
+  async applicationDocumentUploadUrl({ caller, args }) {
+    const { vendor: v } = await ownerCtx(caller)
+    if (v.status !== "needs_information") throw fail("conflict", "Your application isn't waiting for documents.")
+    const type = String(args.type ?? "")
+    const ext = DOC_TYPES[type]
+    if (!ext) throw fail("validation", "Upload a PDF, JPG or PNG.")
+    if (Number(args.size) > DOC_MAX_BYTES) throw fail("validation", "Each file must be 10 MB or smaller.")
+    const path = `applications/${v.id}/${uid("doc")}.${ext}`
+    const { data, error } = await db().storage.from("private-evidence").createSignedUploadUrl(path)
+    if (error) throw error
+    return { path, token: data.token, bucket: "private-evidence" }
+  },
+
+  async respondToApplication({ caller, args }) {
+    const { vendor: v, u } = await ownerCtx(caller)
+    if (v.status !== "needs_information") throw fail("conflict", "Your application isn't waiting for a reply.")
+    const message = String(args.input?.message ?? "").trim().slice(0, 2000)
+    const docs = (Array.isArray(args.input?.documents) ? args.input.documents : []).slice(0, 5)
+    if (!message && docs.length === 0) throw fail("validation", "Add a message or attach a document.")
+    const folder = `applications/${v.id}/`
+    const { data: stored } = await db().storage.from("private-evidence").list(folder.slice(0, -1), { limit: 1000 })
+    const existing = new Set((stored ?? []).map((f: any) => folder + f.name))
+    const documents = docs.map((d: any) => {
+      const path = String(d.path ?? "")
+      if (!path.startsWith(folder) || !existing.has(path)) throw fail("validation", "One of the files didn't finish uploading. Remove it and try again.")
+      return { id: uid("doc"), name: String(d.name ?? "document").replace(/[^\w .()-]/g, "").slice(0, 120) || "document", path, size: Number(d.size) || 0, type: String(d.type ?? "") }
+    })
+    const app = must(await db().from("vendor_applications").select("*").eq("vendor_id", v.id).single()) as any
+    const now = new Date().toISOString()
+    const summary = [message && `“${message.length > 140 ? message.slice(0, 140) + "…" : message}”`, documents.length && `${documents.length} document${documents.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")
+    must(await db().from("vendor_applications").update({
+      status: "under_review",
+      responses: [...(app.responses ?? []), { at: now, by: u.email, message, documents }],
+      history: [...app.history, { at: now, status: "under_review", by: u.email, reason: `Replied: ${summary}` }],
+    }).eq("id", app.id))
+    must(await db().from("vendors").update({ status: "under_review" }).eq("id", v.id))
+    const team = must(await db().from("profiles").select("email").contains("roles", ["admin"])) as any[]
+    for (const t of team) await enqueue({ to: t.email, kind: "status", subject: `${v.name} replied to your request`, body: `${summary}. The application is back in review.`, link: { label: "Review application", href: "/admin/vendors" } })
+    await enqueue({ to: u.email, kind: "status", subject: "We've got your reply", body: "Thanks — your application is back with our team. We'll be in touch within 3 working days.", link: { label: "Open workspace", href: "/vendor" } })
+    await audit(u.email, "vendor.replied", "vendor", v.id, summary)
   },
 
   async getVendorDashboard({ caller }) {

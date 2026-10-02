@@ -110,7 +110,7 @@ export interface DemoDb {
   platformInvites: (TeamInvite & { status: "pending" | "accepted" | "revoked" })[]
 }
 
-export const DB_VERSION = 9
+export const DB_VERSION = 10
 const STORAGE_KEY = "jg-demo-db"
 
 function loadDb(): DemoDb | null {

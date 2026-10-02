@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { db, must } from "./db.ts"
-import type { Gift, OccasionEvent, Order, PlatformSettings, Product, StockHold, Storefront, Vendor, WishlistItem, TimelineEntry } from "./domain/index.ts"
+import type { Gift, OccasionEvent, Order, PlatformSettings, Product, StockHold, Storefront, Vendor, VendorApplication, WishlistItem, TimelineEntry } from "./domain/index.ts"
 import { DEFAULT_SETTINGS, uid } from "./domain/index.ts"
 
 /** Row ↔ domain mapping. Keeps snake_case confined to this file. */
@@ -18,6 +18,12 @@ export const toProduct = (r: any, variants: any[]): Product => ({
   variants: variants.filter((v) => v.product_id === r.id).sort((a, b) => a.position - b.position).map((v) => ({ id: v.id, productId: v.product_id, name: v.name, sku: v.sku, price: Number(v.price), compareAtPrice: v.compare_at_price ? Number(v.compare_at_price) : undefined, stock: v.stock })),
   prepHours: r.prep_hours, perishable: r.perishable, highlyCustomised: r.highly_customised, returnEligible: r.return_eligible, personalisation: r.personalisation ?? undefined,
   wrapping: r.wrapping, sponsored: r.sponsored, editorialScore: Number(r.editorial_score), createdAt: r.created_at, moderationNote: r.moderation_note ?? undefined,
+})
+
+export const toApplication = (a: any): VendorApplication => ({
+  id: a.id, vendorId: a.vendor_id, status: a.status, submittedAt: a.submitted_at, reviewer: a.reviewer, decisionReason: a.decision_reason, history: a.history,
+  ownerName: a.owner_name, ownerEmail: a.owner_email, ownerPhone: a.owner_phone, address: a.address, payoutBank: a.payout_bank, payoutAccountMasked: a.payout_account_masked,
+  termsAcceptedAt: a.terms_accepted_at, responses: a.responses ?? [],
 })
 
 export const toStorefront = (r: any): Storefront => ({

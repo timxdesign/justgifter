@@ -274,3 +274,37 @@ describe("operations team", () => {
     await expect(api.inviteTeamMember({ email: "x@example.com", role: "admin" })).rejects.toThrow(/access/)
   })
 })
+
+describe("vendor application: needs information", () => {
+  it("the applicant replies with documents and the application goes back to review", async () => {
+    api.store.db.users.push({ id: "usr_aso", name: "Aso Owner", email: "owner@aso.example", emailVerified: true, roles: ["customer", "vendor_owner"], vendorId: "ven_pending" })
+    await api.switchPersona("usr_kelechi")
+    await api.reviewVendor("ven_pending", "needs_information", "Send your CAC certificate.")
+
+    await api.switchPersona("usr_aso")
+    const ws = await api.getVendorWorkspace()
+    expect(ws?.vendor.status).toBe("needs_information")
+    await expect(api.uploadApplicationDocument(new File(["x"], "virus.exe", { type: "application/x-msdownload" }))).rejects.toThrow(/PDF, JPG or PNG/)
+    const doc = await api.uploadApplicationDocument(new File(["%PDF-1.4 test"], "CAC certificate.pdf", { type: "application/pdf" }))
+    await expect(api.respondToApplication({ message: "  ", documents: [] })).rejects.toThrow(/message or attach/)
+    await api.respondToApplication({ message: "Here's our CAC certificate.", documents: [doc] })
+
+    const after = await api.getVendorWorkspace()
+    expect(after?.vendor.status).toBe("under_review")
+    expect(after?.application?.responses).toHaveLength(1)
+    expect(api.store.db.outbox.some((m) => m.to === "kelechi@justgifter.example" && /replied/.test(m.subject))).toBe(true)
+    await expect(api.respondToApplication({ message: "again", documents: [] })).rejects.toThrow(/isn't waiting/)
+
+    await api.switchPersona("usr_kelechi")
+    expect(await api.getApplicationDocumentUrl("ven_pending", doc.path)).toMatch(/^data:application\/pdf/)
+    await api.reviewVendor("ven_pending", "approve", "")
+    expect((await api.listVendorsForReview()).find((r) => r.vendor.id === "ven_pending")?.vendor.status).toBe("approved")
+  })
+
+  it("the team can resume review after an off-platform reply", async () => {
+    await api.switchPersona("usr_kelechi")
+    await api.reviewVendor("ven_pending", "needs_information", "Send your CAC certificate.")
+    await api.reviewVendor("ven_pending", "resume_review", "Received by email")
+    expect((await api.listVendorsForReview()).find((r) => r.vendor.id === "ven_pending")?.vendor.status).toBe("under_review")
+  })
+})

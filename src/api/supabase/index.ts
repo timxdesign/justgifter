@@ -186,6 +186,14 @@ export async function createSupabaseApi(): Promise<Api> {
     inviteStaff: (input) => call("inviteStaff", { input }),
     removeStaff: (id) => call("removeStaff", { id }),
     updateVendorSettings: (input) => call("updateVendorSettings", { input }),
+    async uploadApplicationDocument(file) {
+      const { path, token, bucket } = await call<{ path: string; token: string; bucket: string }>("applicationDocumentUploadUrl", { type: file.type, size: file.size })
+      const { error } = await sb.storage.from(bucket).uploadToSignedUrl(path, token, file, { contentType: file.type })
+      if (error) throw new ApiError("unavailable", `${file.name} didn't upload. Try again.`)
+      return { id: path, name: file.name, path, size: file.size, type: file.type }
+    },
+    respondToApplication: (input) => call("respondToApplication", { input }),
+
     async uploadMedia(blob, purpose) {
       const { path, token, bucket } = await call<{ path: string; token: string; bucket: string }>("uploadMediaUrl", { purpose })
       const { error } = await sb.storage.from(bucket).uploadToSignedUrl(path, token, blob, { contentType: "image/webp" })
@@ -197,6 +205,7 @@ export async function createSupabaseApi(): Promise<Api> {
     getOpsOverview: () => call("getOpsOverview"),
     listVendorsForReview: () => call("listVendorsForReview"),
     reviewVendor: (vendorId, decision, reason) => call("reviewVendor", { vendorId, decision, reason }),
+    getApplicationDocumentUrl: async (vendorId, path) => (await call<{ url: string }>("getApplicationDocumentUrl", { vendorId, path })).url,
     listModerationQueue: () => call("listModerationQueue"),
     moderateListing: (productId, decision, note) => call("moderateListing", { productId, decision, note }),
     listAllOrders: (filter) => call("listAllOrders", { filter }),

@@ -651,6 +651,24 @@ export interface VendorApplication {
   payoutBank: string
   payoutAccountMasked: string
   termsAcceptedAt: Iso | null
+  /** The applicant's replies to "needs information" requests, newest last. */
+  responses: ApplicationResponse[]
+}
+
+/** A file in the private-evidence bucket; read only through short-lived signed URLs. */
+export interface ApplicationDocument {
+  id: string
+  name: string
+  path: string
+  size: number
+  type: string
+}
+
+export interface ApplicationResponse {
+  at: Iso
+  by: string
+  message: string
+  documents: ApplicationDocument[]
 }
 
 export interface PlatformSettings {
