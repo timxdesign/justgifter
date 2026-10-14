@@ -4,6 +4,15 @@ Notable changes for users, operators and developers. Newest first. Add a line un
 
 ## Unreleased
 
+- **Send a gift studio (`/send`):** the gift conversation is now a studio, matching the letter studio.
+  - Steps: Who → Gift → Letter (for a gift with a letter) → Review.
+  - Ideas update live as you set budget, interests, area and date.
+  - A phone or desktop preview shows the recipient's real gift page.
+  - The old chat screens are gone. "Tell us in your own words" still fills the answers from free text.
+- **Gift letters get the letter look:** a gift with a letter opens on the same envelope and flower table as a letter on its own, with the theme, flowers and light the sender chose. Migration `20261015090000_gift_letter_design.sql` adds `gifts.letter_design`, which `createCheckout` and `getGiftReveal` carry.
+- **Studios share one frame** (`src/components/studio/`): a labelled stepper, sticky actions and the device preview. Both studios are full-bleed routes.
+- The gift reveal now lays out by container width rather than screen width, so it previews correctly in a phone frame. The real gift page looks the same.
+
 - **Letter studio (`/send/letter`):** a letter on its own is now built in a studio with a live phone or desktop preview, instead of the chat.
   - Three themes (Flower table, Soft envelope, Celebration), five flowers, day or night light, and petals, butterflies and gold details.
   - Optional moments: reasons, story chapters, up to 8 photos, a special date, places, wishes and a song (Spotify, YouTube, Apple Music or Audiomack).

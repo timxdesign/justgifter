@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { lazy, Suspense, useState, type ReactNode } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { cn } from "cn"
 import type { GiftRevealView } from "@/api"
@@ -9,18 +9,21 @@ import { toDateOnly, LAUNCH_TIMEZONE } from "@domain/index.ts"
 
 const ease = [0.2, 0, 0, 1] as const
 
+const GiftLetter = lazy(() => import("./gift-letter"))
+
 /** The opened gift: item, message and a fulfilment status kept separate from the reveal (GFT 09). */
 export function RevealContent({ view, children }: { view: GiftRevealView; children?: ReactNode }) {
   const reduce = useReducedMotion()
   const [img, setImg] = useState(0)
   // Letters written with the assistant can run long: they get their own page-width card.
-  const isLetter = view.message.length > 280 || view.message.split("\n").length > 6
+  const designed = Boolean(view.message && view.letterDesign)
+  const isLetter = designed || view.message.length > 280 || view.message.split("\n").length > 6
   const enter = (i: number) => (reduce ? {} : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.6, delay: 0.1 * i, ease } })
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-6 pb-4 sm:pt-10">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-6 pb-4 @[40rem]:pt-10">
       <motion.div {...enter(0)} className="bg-card shadow-float overflow-hidden rounded-[2rem]">
-        <div className="grid sm:grid-cols-[1.05fr_1fr]">
-          <div className="relative aspect-[4/5] sm:aspect-auto sm:min-h-[26rem]">
+        <div className="grid @[40rem]:grid-cols-[1.05fr_1fr]">
+          <div className="relative aspect-[4/5] @[40rem]:aspect-auto @[40rem]:min-h-[26rem]">
             <Img src={view.item.images[img] ?? view.item.image} alt={view.item.title} eager className="absolute inset-0 size-full" sizes="(min-width: 640px) 50vw, 100vw" />
             {view.item.images.length > 1 && (
               <div className="absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
@@ -30,7 +33,7 @@ export function RevealContent({ view, children }: { view: GiftRevealView; childr
               </div>
             )}
           </div>
-          <div className="flex flex-col gap-5 p-6 sm:p-8">
+          <div className="flex flex-col gap-5 p-6 @[40rem]:p-8">
             <motion.p {...enter(1)} className="eyebrow text-brand-text">
               {view.occasionTitle ? `For ${view.occasionTitle}` : "Your gift"}
             </motion.p>
@@ -62,8 +65,15 @@ export function RevealContent({ view, children }: { view: GiftRevealView; childr
           </div>
         </div>
       </motion.div>
-      {view.message && isLetter && (
-        <motion.section {...enter(4)} aria-label="Letter" className="paper-grain bg-card shadow-float rounded-[2rem] p-7 sm:p-10">
+      {designed && (
+        <motion.div {...enter(4)}>
+          <Suspense fallback={<div className="bg-card h-[40rem] animate-pulse rounded-[2rem]" />}>
+            <GiftLetter message={view.message} design={view.letterDesign!} recipientName={view.recipientName} from={view.anonymous ? "Someone who's thinking of you" : (view.senderDisplayName ?? "")} />
+          </Suspense>
+        </motion.div>
+      )}
+      {view.message && isLetter && !designed && (
+        <motion.section {...enter(4)} aria-label="Letter" className="paper-grain bg-card shadow-float rounded-[2rem] p-7 @[40rem]:p-10">
           <p className="font-display text-xl leading-relaxed whitespace-pre-line">{view.message}</p>
           {view.anonymous && <p className="text-muted-foreground mt-4 text-sm">— Someone who's thinking of you</p>}
         </motion.section>

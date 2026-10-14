@@ -134,6 +134,8 @@ export interface CheckoutIntent {
   requestedDate?: string
   /** Pre-filled from the send-gift assistant; still editable at checkout. */
   message?: string
+  /** The letter's look, chosen in the send studio. */
+  letterDesign?: import("@domain/index.ts").LetterDesign
   senderDisplayName?: string
 }
 

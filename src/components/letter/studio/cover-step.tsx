@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { FieldError, SectionTitle } from "@/components/studio/studio-layout"
 import { motion } from "motion/react"
 import { cn } from "cn"
 import { LETTER_FLOWERS, LETTER_SIGNATURE_MAX, LETTER_THEMES, OCCASIONS, type LetterDesign, type OccasionId } from "@domain/index.ts"
@@ -12,33 +13,7 @@ import { ThemeSwatch } from "./preview"
 
 type Update = (patch: Partial<StudioDraft>) => void
 
-export function StepHeading({ title, children }: { title: ReactNode; children?: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <span aria-hidden="true" className="bg-brand h-0.5 w-12 rounded-full" />
-      <h1 className="font-display text-[clamp(2.25rem,5vw,3.75rem)] leading-[1.02] font-medium tracking-tight text-balance">{title}</h1>
-      {children && <p className="text-muted-foreground max-w-xl text-lg text-pretty">{children}</p>}
-    </div>
-  )
-}
-
-export function SectionTitle({ children, hint }: { children: ReactNode; hint?: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <h2 className="font-display text-2xl italic">{children}</h2>
-      {hint && <p className="text-muted-foreground text-sm text-pretty">{hint}</p>}
-    </div>
-  )
-}
-
-export function FieldError({ problems, field }: { problems: StudioProblem[]; field: string }) {
-  const p = problems.find((x) => x.field === field)
-  return p ? (
-    <p className="text-destructive text-sm" role="alert" id={`err-${field}`}>
-      {p.message}
-    </p>
-  ) : null
-}
+export { FieldError, SectionTitle, StepHeading } from "@/components/studio/studio-layout"
 
 const Eyebrow = ({ children, required, htmlFor }: { children: ReactNode; required?: boolean; htmlFor?: string }) => (
   <Label htmlFor={htmlFor} className="eyebrow text-foreground">
@@ -49,7 +24,6 @@ const Eyebrow = ({ children, required, htmlFor }: { children: ReactNode; require
 
 /** Step 1: who it's for, who it's from, and how the table looks. */
 export function CoverStep({ d, update, problems }: { d: StudioDraft; update: Update; problems: StudioProblem[] }) {
-  const design = (patch: Partial<LetterDesign>) => update({ design: { ...d.design, ...patch } })
   const err = (f: string) => problems.some((p) => p.field === f)
   return (
     <div className="flex flex-col gap-10">
@@ -85,7 +59,7 @@ export function CoverStep({ d, update, problems }: { d: StudioDraft; update: Upd
                   const theme = !celebrationAllowed(occasion) && d.design.theme === "celebration" ? "table" : d.design.theme
                   update({ occasion, design: untouched ? defaultDesignFor(occasion) : { ...d.design, theme } })
                 }}
-                className={cn("rounded-full border px-3.5 py-1.5 text-sm transition-colors", on ? "border-brand bg-brand-soft text-brand-text font-medium" : "hover:border-foreground/30")}
+                className={cn("min-h-10 rounded-full border px-4 py-2 text-sm transition-colors", on ? "border-brand bg-brand-soft text-brand-text font-medium" : "hover:border-foreground/30")}
               >
                 {o.name}
               </button>
@@ -98,16 +72,26 @@ export function CoverStep({ d, update, problems }: { d: StudioDraft; update: Upd
         <div id="ls-table">
           <SectionTitle hint="The cover and every moment follow the look you choose. You can change it any time; your words stay put.">Your table</SectionTitle>
         </div>
+        <DesignPicker design={d.design} onChange={(design) => update({ design })} occasion={d.occasion} />
+      </section>
+    </div>
+  )
+}
 
+/** Theme, flowers, light and details: the look of a letter, on its own or with a gift. */
+export function DesignPicker({ design, onChange, occasion }: { design: LetterDesign; onChange: (d: LetterDesign) => void; occasion?: OccasionId }) {
+  const set = (patch: Partial<LetterDesign>) => onChange({ ...design, ...patch })
+  return (
+    <div className="flex flex-col gap-6">
         <fieldset className="flex flex-col gap-3">
           <legend className="eyebrow mb-3">How it opens</legend>
           <div className="grid gap-3 sm:grid-cols-3">
             {LETTER_THEMES.map((t) => {
-              const on = d.design.theme === t.id
-              const blocked = t.id === "celebration" && !celebrationAllowed(d.occasion)
+              const on = design.theme === t.id
+              const blocked = t.id === "celebration" && !celebrationAllowed(occasion)
               return (
-                <button key={t.id} type="button" aria-pressed={on} disabled={blocked} onClick={() => design({ theme: t.id })} className={cn("group relative flex flex-col gap-2 rounded-2xl p-2 pb-3 text-left transition-[box-shadow,transform] active:scale-[0.98] disabled:opacity-45", on ? "ring-brand bg-brand-soft/60 ring-2" : "ring-border hover:ring-foreground/25 bg-card ring-1")}>
-                  <ThemeSwatch theme={t.id} design={d.design} className="aspect-[16/10] w-full" />
+                <button key={t.id} type="button" aria-pressed={on} disabled={blocked} onClick={() => set({ theme: t.id })} className={cn("group relative flex flex-col gap-2 rounded-2xl p-2 pb-3 text-left transition-[box-shadow,transform] active:scale-[0.98] disabled:opacity-45", on ? "ring-brand bg-brand-soft/60 ring-2" : "ring-border hover:ring-foreground/25 bg-card ring-1")}>
+                  <ThemeSwatch theme={t.id} design={design} className="aspect-[16/10] w-full" />
                   <span className="px-1 font-medium">{t.name}</span>
                   <span className="text-muted-foreground px-1 text-xs leading-snug">{blocked ? "Not for this occasion" : t.description}</span>
                   {on && <Tick />}
@@ -121,9 +105,9 @@ export function CoverStep({ d, update, problems }: { d: StudioDraft; update: Upd
           <legend className="eyebrow mb-3">Flowers</legend>
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-5">
             {LETTER_FLOWERS.map((f) => {
-              const on = d.design.flowers === f.id
+              const on = design.flowers === f.id
               return (
-                <button key={f.id} type="button" aria-pressed={on} onClick={() => design({ flowers: f.id })} className={cn("relative flex flex-col items-center gap-1.5 rounded-2xl px-2 pt-3 pb-2.5 transition-[box-shadow,transform] active:scale-95", on ? "ring-brand bg-brand-soft/60 ring-2" : "bg-card ring-border hover:ring-foreground/25 ring-1")}>
+                <button key={f.id} type="button" aria-pressed={on} onClick={() => set({ flowers: f.id })} className={cn("relative flex flex-col items-center gap-1.5 rounded-2xl px-2 pt-3 pb-2.5 transition-[box-shadow,transform] active:scale-95", on ? "ring-brand bg-brand-soft/60 ring-2" : "bg-card ring-border hover:ring-foreground/25 ring-1")}>
                   <motion.span animate={on ? { rotate: [0, -8, 6, 0], scale: [1, 1.08, 1] } : { rotate: 0, scale: 1 }} transition={{ duration: 0.5 }} className="block">
                     <Flower kind={f.id} className="size-14 drop-shadow-[0_4px_6px_rgb(60_20_20/0.2)] sm:size-16" />
                   </motion.span>
@@ -142,10 +126,10 @@ export function CoverStep({ d, update, problems }: { d: StudioDraft; update: Upd
               ["day", "Day", "Soft daylight", SunIcon],
               ["night", "Night", "By candlelight", MoonIcon],
             ] as const).map(([id, name, hint, Icon]) => {
-              const on = d.design.light === id
+              const on = design.light === id
               return (
-                <button key={id} type="button" role="radio" aria-checked={on} onClick={() => design({ light: id })} className={cn("flex items-center gap-3 rounded-xl p-2 text-left transition-colors", on ? "bg-card ring-brand shadow-sm ring-1" : "hover:bg-card/60")}>
-                  <ThemeSwatch theme={d.design.theme} design={{ ...d.design, light: id }} className="size-12 shrink-0 rounded-lg" />
+                <button key={id} type="button" role="radio" aria-checked={on} onClick={() => set({ light: id })} className={cn("flex items-center gap-3 rounded-xl p-2 text-left transition-colors", on ? "bg-card ring-brand shadow-sm ring-1" : "hover:bg-card/60")}>
+                  <ThemeSwatch theme={design.theme} design={{ ...design, light: id }} className="size-12 shrink-0 rounded-lg" />
                   <span className="flex flex-col">
                     <span className={cn("flex items-center gap-1.5 font-medium", on && "text-brand-text")}>
                       <Icon className="size-4" />
@@ -162,7 +146,7 @@ export function CoverStep({ d, update, problems }: { d: StudioDraft; update: Upd
         <fieldset className="flex flex-col gap-2">
           <legend className="eyebrow mb-3">Details</legend>
           {([
-            ["petals", d.design.theme === "celebration" ? "Confetti in the air" : "Petals in the breeze", d.design.theme === "celebration" ? "Confetti drifts down while they read." : "Petals drift across the table while they read."],
+            ["petals", design.theme === "celebration" ? "Confetti in the air" : "Petals in the breeze", design.theme === "celebration" ? "Confetti drifts down while they read." : "Petals drift across the table while they read."],
             ["butterflies", "Butterflies", "A pair of butterflies flutter across the scene."],
             ["gold", "Gold details", "Gold filigree on the corners of the letter."],
           ] as const).map(([key, title, hint]) => (
@@ -171,11 +155,10 @@ export function CoverStep({ d, update, problems }: { d: StudioDraft; update: Upd
                 <span className="font-medium">{title}</span>
                 <span className="text-muted-foreground text-sm">{hint}</span>
               </span>
-              <Switch checked={d.design[key]} onCheckedChange={(v) => design({ [key]: v })} aria-label={title} />
+              <Switch checked={design[key]} onCheckedChange={(v) => set({ [key]: v })} aria-label={title} />
             </label>
           ))}
         </fieldset>
-      </section>
     </div>
   )
 }

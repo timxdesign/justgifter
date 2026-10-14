@@ -14,14 +14,16 @@ Vite 8, React 19 and TypeScript, styled with Tailwind v4 and shadcn/ui (Radix). 
 | `api/` | The `Api` contract and its two implementations (see [API.md](API.md)). |
 | `components/ui/` | shadcn/ui primitives. Add new ones with `npx shadcn add <name>`; don't hand-roll primitives. |
 | `components/` | App components: `commerce.tsx` (prices, status badges, cart bits), `product-view.tsx`, `store-chrome.tsx`, `workspace.tsx`, `charts.tsx`, `share.tsx`, `otp-verify.tsx`, `common.tsx` (skeletons, empty states). |
-| `components/reveal/` | Gift reveal experience (envelope or wrapped box, confetti, reduced-motion fallback), plus the home-page demo. |
+| `components/reveal/` | Gift reveal experience (envelope or wrapped box, confetti, reduced-motion fallback), plus the home-page demo. Laid out with container queries, so it renders correctly inside the studio's phone preview. A designed gift letter (`gift-letter.tsx`, loaded lazily) reuses the letter experience in `embedded` mode. |
 | `components/event/` | Occasion-page renderer and event reveal, driven by `EventDesign` and template tokens. |
-| `components/send/` | The `/send` conversation: questions, gift results, letter steps, review. |
+| `components/studio/` | The studio frame shared by `/send` and `/send/letter`: `studio-layout.tsx` (labelled stepper, form column, sticky action bar, preview column) and `device-preview.tsx` (phone and desktop frames scaled to fit, replay, full screen). |
+| `components/send/` | The send-a-gift studio: `studio/who-step.tsx`, `gift-step.tsx` (preferences and live ideas), `letter-step.tsx`, `review-step.tsx` and `gift-preview.tsx` (the recipient's gift page in the preview). `parts.tsx` has the shared chips. |
 | `components/letter/` | The letter experience and studio. `experience.tsx` is the reader (cover, one scene per moment, the table) and is reused unchanged as the studio's live preview. `moments.tsx` holds the scenes, `scene.tsx` the theme colours and backdrop, and `art.tsx` the hand-built SVG flowers, seal and objects. `letter.css` has the typefaces and ambient motion, all off under reduced motion. `studio/` holds the cover, moments and send steps and the preview pane. |
 | `lib/api-hooks.ts` | `useApiQuery`, `useApiMutation` (invalidation lists, toast errors) and `qk`, the query-key factory. |
 | `lib/session.tsx` | Session context: `user`, `hasRole`, sign in and out. |
 | `lib/cart.ts` | One bag per vendor, stored in localStorage. Prices are display snapshots. |
-| `lib/send-flow.ts` | Pure state machine for the send-gift and letter conversation (tested in `send-flow.test.ts`). |
+| `lib/send-flow.ts` | The send draft (`SendState`) and free-text understanding (`interpret`), shared by the send studio (tested in `send-flow.test.ts`). |
+| `lib/gift-studio.ts` | Send studio steps, per-step checks, the recipient preview and the checkout hand-over (tested in `gift-studio.test.ts`). |
 | `lib/letter-studio.ts` | Letter studio draft, moment metadata, per-step checks and the `sendLetter` payload (tested in `letter-studio.test.ts`). `lib/letter-photos.ts` keeps draft photos in IndexedDB until sending. |
 | `lib/images.ts` | Client-side re-encode (EXIF strip, resize) before upload. |
 | `lib/seo.ts` | Per-page `<title>` and meta tags for client navigation. The Worker handles the first load. |
@@ -42,7 +44,6 @@ Access is what the route guard enforces in the browser. The API re-checks every 
 | `/shop` | `shop.tsx` | public |
 | `/occasions/:occasion` | `shop.tsx` (pre-filtered) | public |
 | `/products/:slug` | `product.tsx` | public |
-| `/send` | `send.tsx`: the send-a-gift conversation. Choosing a letter on its own moves to `/send/letter`. | public |
 | `/assistant` | redirects to `/send`, keeping `?q=` | public |
 | `/vendors` | `vendors.tsx` | public |
 | `/occasion-pages` | `occasion-pages.tsx`: landing page for hosts | public |
@@ -71,6 +72,7 @@ Access is what the route guard enforces in the browser. The API re-checks every 
 | `/events/:id/edit` | `host/event-editor.tsx` | signed in (host or co-host) |
 | `/e/:slug` | `event-public.tsx`: public occasion page and wishlist | public, or invite code |
 | `/g/:token` | `gift.tsx`: recipient reveal | gift token |
+| `/send` | `send.tsx`: the send-a-gift studio (full-bleed, live preview). Accepts `?intent=gift\|both\|letter` and `?q=`. Choosing a letter on its own moves to `/send/letter`. | public |
 | `/send/letter` | `letter-studio.tsx`: the letter studio (full-bleed, live preview). Accepts `?to=` and `?occasion=`. | public (sending needs a confirmed email) |
 | `/l/:token` | `letter.tsx`: recipient opens and reads a letter, full screen | letter token |
 | `/preview/gift/:token` | `gift-preview.tsx`: the sender previews the reveal | preview token |

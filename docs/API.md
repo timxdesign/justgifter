@@ -110,7 +110,7 @@ One-time codes have their own limit on top: 3 issued per minute per key, and 5 a
 | Method | Access | Notes |
 |---|---|---|
 | `previewCheckout` | public | Re-prices on the server and returns eligibility issues, pricing, delivery quote and hold expiry. |
-| `createCheckout` | public | Creates holds, the order (`awaiting_payment`), the gift and the payment. Returns `paymentUrl` and a guest `orderAccessToken`. |
+| `createCheckout` | public | Creates holds, the order (`awaiting_payment`), the gift and the payment. Returns `paymentUrl` and a guest `orderAccessToken`. `gift.letterDesign` (from the send studio) is cleaned with `sanitiseLetterDesign` and kept only when there's a message. |
 | `getPaymentStatus` | buyer | Polled by `/checkout/confirm/:reference`. In production it verifies with Paystack before trusting a success. |
 | `simulatePayment` | demo | The sandbox "provider". It calls the same commit path the webhook uses. |
 
@@ -135,7 +135,7 @@ One-time codes have their own limit on top: 3 issued per minute per key, and 5 a
 | `getGiftEntry` | recipient | Landing state: `ready`, `scheduled`, `revoked`, `expired`, `declined` or `not_found`. Shows only the first name. |
 | `sendGiftCode` | recipient | Emails a code to the contact the sender used. |
 | `verifyGiftCode` | recipient | Returns a short-lived `GiftSession`. |
-| `getGiftReveal` | recipient | The full reveal. Needs a session when verification is required. |
+| `getGiftReveal` | recipient | The full reveal. Needs a session when verification is required. Includes `letterDesign` when the message is a designed letter. |
 | `getGiftPreview` | buyer | The sender previews the reveal using a separate preview token. |
 | `markGiftOpened` | recipient | Moves the reveal status to `opened`. |
 | `submitGiftAddress` | recipient | For address-unknown gifts. An address outside the quoted zone becomes `needs_sender_approval`. |

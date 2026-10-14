@@ -40,7 +40,7 @@ Postgres 17 on Supabase. The schema is defined only by the migrations in [`supab
 | | `payments` | Payment attempts per order (reference, amount, expiry). |
 | | `webhook_events` | Every processed provider event id. This is what makes replays idempotent. |
 | | `revised_quotes` | A vendor-proposed price change awaiting buyer approval. |
-| Gifts | `gifts` | Recipient, message (≤ 2,000 characters), reveal style and time, claim status, token hashes. |
+| Gifts | `gifts` | Recipient, message (≤ 2,000 characters), `letter_design` (jsonb, the letter's look; null for a plain message), reveal style and time, claim status, token hashes. |
 | | `gift_sessions` | Short-lived recipient sessions after code verification. |
 | Letters | `letters` | Stand-alone digital letters: recipient, body, schedule, status, token hash, `delivery` (`email` or `link`; link letters have no `recipient_email`), `design` and `moments` (jsonb, validated by the API, capped at 64 KB). Unique on `(sender_user_id, client_ref)`. |
 | Money | `refunds` | Refund lifecycle and the provider reference. |
@@ -95,6 +95,7 @@ Images are re-encoded in the browser before upload, which strips EXIF (`src/lib/
 | `20261002144356_platform_team_invites.sql` | `platform_invites`. |
 | `20261002171223_vendor_application_responses.sql` | `vendor_applications.responses`. |
 | `20261004090000_digital_letters.sql` | `letters`. Raises the gift message limit to 2,000 characters. |
+| `20261015090000_gift_letter_design.sql` | `gifts.letter_design`, so a gift's message can open as a designed letter. |
 | `20261014090000_letter_studio.sql` | Letter `delivery`, `design` and `moments`; `recipient_email` becomes optional for link letters; private `letter-media` bucket. |
 
 ### Writing a migration

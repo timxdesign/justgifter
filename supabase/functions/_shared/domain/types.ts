@@ -448,6 +448,8 @@ export interface Gift {
   senderDisplayName: string
   anonymous: boolean
   message: string
+  /** The look of the gift's letter (flower table, envelope…), when the message is a letter. */
+  letterDesign: import("./letter-studio.ts").LetterDesign | null
   revealStyle: RevealStyle
   revealAt: Iso
   timezone: string

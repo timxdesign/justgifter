@@ -4,7 +4,7 @@
 |---|---|---|---|
 | Domain rules | Vitest | `supabase/functions/_shared/domain/domain.test.ts` | `npm test` |
 | Backend acceptance (demo backend) | Vitest | `src/api/demo/demo.test.ts` | `npm test` |
-| Send conversation logic | Vitest | `src/lib/send-flow.test.ts` | `npm test` |
+| Send and letter studio logic | Vitest | `src/lib/send-flow.test.ts`, `src/lib/gift-studio.test.ts`, `src/lib/letter-studio.test.ts` | `npm test` |
 | End-to-end journeys | Playwright (desktop Chrome and Pixel 7) | `e2e/gifting.spec.ts`, `e2e/send.spec.ts` | `npx playwright test` |
 | Accessibility | Playwright + axe (WCAG 2.2 AA) | `e2e/a11y.spec.ts` | `npx playwright test e2e/a11y.spec.ts` |
 | Database concurrency and idempotency | bash + psql | `supabase/tests/commerce_test.sh` | `PSQL="psql <conn>" ./supabase/tests/commerce_test.sh` |
@@ -17,16 +17,18 @@
 - **`domain.test.ts`**: delivery promises (cut-offs, lead days, blackout dates, capacity, time zones), pricing and settlement, eligibility codes, every state machine, holds and wishlist arithmetic, ledger idempotency, tokens, recommendations, template validation and letters.
 - **`demo.test.ts`**: acceptance criteria (AC 01–07, 11–14, 17–22) run end to end against the demo backend. The demo uses the same domain layer, so these tests check the workflows that production follows.
 - **`send-flow.test.ts`**: the `/send` conversation never asks the same question twice, letter-only senders never see gift questions, and editing an earlier answer keeps later ones.
+- **`gift-studio.test.ts`**: steps for a gift with or without a letter, the chosen-gift fallback, letter checks, and the preview and checkout carrying the letter and its look.
 - **`letter-studio.test.ts`**: per-step checks, switched-off moments, photo paths, the payload passing the shared validator, the Celebration rule, and the CSP allowing every music player the parser accepts.
 - **`gifting.spec.ts`**:
   - direct gift → sandbox payment → recipient opens the reveal from the demo inbox.
   - a wishlist purchase that never exposes the host's address.
   - a storefront self-purchase with source attribution.
 - **`send.spec.ts`**:
-  - letter only: `/send` hands over to the studio → draft with help → sign in → email it → recipient opens it.
+  - letter only: `/send` hands over to the letter studio → draft with help → sign in → email it → recipient opens it.
+  - gift with a letter: described in words → ideas (and "choose a gift first") → letter with a chosen look → checkout and payment → the recipient opens the gift and pulls the ribbon on its letter.
   - letter by link: moments (reasons, a song link checked live) → link shown once → recipient picks a reason and sees everything on the table.
   - gift: a detailed first message is understood, answers can be changed, and checkout is pre-filled.
-- **`a11y.spec.ts`**: no serious or critical axe violations on key pages and on every occasion template. Manual keyboard and screen-reader passes are still required before launch.
+- **`a11y.spec.ts`**: no serious or critical axe violations on key pages and on every occasion template. Manual keyboard and screen-reader passes are still required before launch. The studios' sticky action bar (`data-studio-actions`) is laid out in place during the scan, so it isn't reported as covering whatever sits under it at that scroll position.
 - **`commerce_test.sh`**:
   - two concurrent sessions racing for the last unit get exactly one hold (AC 19).
   - a replayed webhook commits stock once (AC 03).

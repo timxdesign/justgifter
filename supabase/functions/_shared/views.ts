@@ -93,6 +93,7 @@ export function revealView(g: Gift, o: Order, product: Product | undefined, vend
   const dispatched = ["dispatched", "delivered", "delivery_issue"].includes(o.status)
   return {
     giftId: g.id, preview, recipientName: g.recipientName, senderDisplayName: g.anonymous ? null : g.senderDisplayName, anonymous: g.anonymous, message: g.message,
+    letterDesign: g.message ? g.letterDesign : null,
     revealStyle: g.revealStyle, revealStatus: preview ? "available" : g.revealStatus, openedAt: preview ? null : g.openedAt,
     item: { title: line.title, variantName: line.variantName, image: line.image, images: product?.images ?? [line.image], vendorName, summary: product?.summary ?? "", quantity: line.quantity, personalisationText: line.personalisationText },
     claim: { status: g.claimStatus, deadline: g.claimDeadline, zoneId: zone.id, zoneName: zone.name, areas: zone.areas },

@@ -29,15 +29,17 @@ export interface GiftRevealProps {
   fromLabel: string
   celebratory?: boolean
   preview?: boolean
+  /** Previews can start already open (the send studio shows the opened gift once one is chosen). */
+  startOpen?: boolean
   onOpened?: () => void
   /** The revealed content. Rendered as normal, accessible HTML once open. */
   children: ReactNode
   className?: string
 }
 
-export function GiftReveal({ id, revealStyle, recipientName, fromLabel, celebratory = true, preview, onOpened, children, className }: GiftRevealProps) {
+export function GiftReveal({ id, revealStyle, recipientName, fromLabel, celebratory = true, preview, startOpen, onOpened, children, className }: GiftRevealProps) {
   const reduce = useReducedMotion()
-  const [phase, setPhase] = useState<Phase>(() => (!preview && wasOpened(id) ? "open" : "closed"))
+  const [phase, setPhase] = useState<Phase>(() => (startOpen || (!preview && wasOpened(id)) ? "open" : "closed"))
   const [replayKey, setReplayKey] = useState(0)
   const timer = useRef<number | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -76,8 +78,11 @@ export function GiftReveal({ id, revealStyle, recipientName, fromLabel, celebrat
   }, [])
 
   // Move focus to the revealed content so keyboard and screen-reader users land on it.
+  // Only after the reader opens it: a preview that starts open mustn't pull focus from the form beside it.
+  const startedOpen = useRef(phase === "open")
   useEffect(() => {
-    if (phase === "open") contentRef.current?.focus({ preventScroll: true })
+    if (phase === "open" && !startedOpen.current) contentRef.current?.focus({ preventScroll: true })
+    if (phase !== "open") startedOpen.current = false
   }, [phase])
 
   const replay = () => {
@@ -87,7 +92,8 @@ export function GiftReveal({ id, revealStyle, recipientName, fromLabel, celebrat
   }
 
   return (
-    <div className={cn("relative", className)}>
+    // A container, not the viewport, sets the layout, so previews in a phone frame lay out like a phone.
+    <div className={cn("@container relative", className)}>
       <AnimatePresence mode="wait" initial={false}>
         {phase !== "open" ? (
           <motion.section
@@ -100,7 +106,7 @@ export function GiftReveal({ id, revealStyle, recipientName, fromLabel, celebrat
               <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }} className="eyebrow text-plum-muted">
                 {preview ? "Preview · this is what they'll see" : fromLabel}
               </motion.p>
-              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.08, ease }} className="font-display text-plum-foreground text-4xl font-medium sm:text-5xl">
+              <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.08, ease }} className="font-display text-plum-foreground text-4xl font-medium @[40rem]:text-5xl">
                 {recipientName ? <>A gift for <span className="font-display-wonk italic">{recipientName}</span></> : "A gift for you"}
               </motion.h1>
             </div>
@@ -171,7 +177,7 @@ function WrappedBox({ phase, onActivate }: { phase: Phase; onActivate: () => voi
       onClick={onActivate}
       disabled={phase !== "closed"}
       aria-label="Open your gift"
-      className="group relative size-60 cursor-pointer rounded-3xl outline-offset-8 disabled:cursor-default sm:size-72"
+      className="group relative size-60 cursor-pointer rounded-3xl outline-offset-8 disabled:cursor-default @[40rem]:size-72"
     >
       {/* light burst */}
       <motion.span
@@ -247,7 +253,7 @@ function Envelope({ phase, recipientName, onActivate }: { phase: Phase; recipien
       onClick={onActivate}
       disabled={phase !== "closed"}
       aria-label="Open your gift"
-      className="group relative h-52 w-80 cursor-pointer rounded-xl outline-offset-8 disabled:cursor-default sm:h-60 sm:w-96"
+      className="group relative h-52 w-80 cursor-pointer rounded-xl outline-offset-8 disabled:cursor-default @[40rem]:h-60 @[40rem]:w-96"
       style={{ perspective: 1000 }}
     >
       <motion.span

@@ -2,7 +2,7 @@ import { useRef, useState, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 import { cn } from "cn"
-import { LETTER_MAX_CHARS, LETTER_TONES, MOMENT_IDS, MOMENT_LIMITS, parseSongLink, SONG_PROVIDERS, type LetterRevision, type LetterTone, type MomentId } from "@domain/index.ts"
+import { LETTER_MAX_CHARS, LETTER_TONES, MOMENT_IDS, MOMENT_LIMITS, parseSongLink, SONG_PROVIDERS, type LetterRevision, type LetterTone, type MomentId, type OccasionId } from "@domain/index.ts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -149,16 +149,49 @@ const QUICK: { id: LetterRevision; label: string }[] = [
 ]
 
 function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update; problems: StudioProblem[] }) {
-  const [helper, setHelper] = useState(!d.body.trim())
+  return (
+    <LetterWriter
+      body={d.body}
+      onBody={(body) => update({ body })}
+      tone={d.tone}
+      onTone={(tone) => update({ tone })}
+      recipientName={d.recipientName}
+      occasion={d.occasion}
+      signature={d.signature}
+      closing={d.moments.closing}
+      onClosing={(closing) => update({ moments: { ...d.moments, closing } })}
+      problems={problems}
+    />
+  )
+}
+
+export interface LetterWriterProps {
+  body: string
+  onBody: (body: string) => void
+  tone?: LetterTone
+  onTone: (tone: LetterTone) => void
+  recipientName: string
+  occasion?: OccasionId
+  signature: string
+  /** Closing words, when the letter has a place for them (letters on their own). */
+  closing?: string
+  onClosing?: (closing: string) => void
+  problems: StudioProblem[]
+}
+
+/** The letter itself, with help to draft, polish, shorten or warm it, and undo. Shared by both studios. */
+export function LetterWriter({ body, onBody, tone, onTone, recipientName, occasion, signature, closing, onClosing, problems }: LetterWriterProps) {
+
+  const [helper, setHelper] = useState(!body.trim())
   const [message, setMessage] = useState("")
   const [history, setHistory] = useState<string[]>([])
-  const brief = { recipientName: d.recipientName.trim() || undefined, occasion: d.occasion, tone: d.tone, message: message.trim() || undefined, signature: d.signature.trim() || undefined }
-  const apply = (body: string) => {
-    setHistory((h) => [...h.slice(-9), d.body])
-    update({ body })
+  const brief = { recipientName: recipientName.trim() || undefined, occasion, tone, message: message.trim() || undefined, signature: signature.trim() || undefined }
+  const apply = (next: string) => {
+    setHistory((h) => [...h.slice(-9), body])
+    onBody(next)
   }
   const compose = useApiMutation((api, mode: "draft" | "improve" | LetterRevision) =>
-    api.composeLetter(mode === "draft" ? { brief, mode: "draft" } : mode === "improve" ? { brief, mode: "improve", draft: d.body } : { brief, mode: "revise", revision: mode, draft: d.body }),
+    api.composeLetter(mode === "draft" ? { brief, mode: "draft" } : mode === "improve" ? { brief, mode: "improve", draft: body } : { brief, mode: "revise", revision: mode, draft: body }),
   {
     onSuccess: (r) => {
       apply(r.body)
@@ -166,7 +199,7 @@ function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update;
     },
   })
   const busy = compose.isPending
-  const over = d.body.length > LETTER_MAX_CHARS
+  const over = body.length > LETTER_MAX_CHARS
   return (
     <div className="flex flex-col gap-6">
       <div className="from-brand-soft border-brand/20 flex flex-col gap-4 rounded-3xl border bg-gradient-to-br to-transparent p-4 sm:p-5">
@@ -175,15 +208,15 @@ function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update;
             <MagicWandIcon className="size-5" />
           </span>
           <span className="flex flex-1 flex-col">
-            <span className="font-semibold">{d.body.trim() ? "Polish it with help" : "Help me write it"}</span>
-            <span className="text-muted-foreground text-sm">{d.body.trim() ? "Tidy what you wrote, or make it shorter or warmer. You can undo anything." : "Say what you want them to know and pick a tone. You'll edit the draft before anything is sent."}</span>
+            <span className="font-semibold">{body.trim() ? "Polish it with help" : "Help me write it"}</span>
+            <span className="text-muted-foreground text-sm">{body.trim() ? "Tidy what you wrote, or make it shorter or warmer. You can undo anything." : "Say what you want them to know and pick a tone. You'll edit the draft before anything is sent."}</span>
           </span>
         </button>
         <AnimatePresence initial={false}>
           {helper && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
               <div className="flex flex-col gap-4 pt-1">
-                {!d.body.trim() && (
+                {!body.trim() && (
                   <>
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="ls-brief">What do you want them to know or feel?</Label>
@@ -193,7 +226,7 @@ function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update;
                       <span className="text-sm font-medium" id="ls-tone">Tone</span>
                       <div role="radiogroup" aria-labelledby="ls-tone" className="flex flex-wrap gap-2">
                         {LETTER_TONES.map((t) => (
-                          <button key={t.id} type="button" role="radio" aria-checked={d.tone === t.id} onClick={() => update({ tone: t.id as LetterTone })} className={cn("rounded-full border px-3.5 py-1.5 text-sm transition-colors", d.tone === t.id ? "border-brand bg-card text-brand-text font-medium" : "bg-card hover:border-foreground/30")}>
+                          <button key={t.id} type="button" role="radio" aria-checked={tone === t.id} onClick={() => onTone(t.id as LetterTone)} className={cn("rounded-full border px-3.5 py-1.5 text-sm transition-colors", tone === t.id ? "border-brand bg-card text-brand-text font-medium" : "bg-card hover:border-foreground/30")}>
                             {t.name}
                           </button>
                         ))}
@@ -202,7 +235,7 @@ function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update;
                   </>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  {!d.body.trim() ? (
+                  {!body.trim() ? (
                     <Button disabled={busy || !message.trim()} onClick={() => compose.mutate("draft")}>
                       {busy ? <Spinner data-icon="inline-start" /> : <StarsIcon data-icon="inline-start" />}
                       Write a draft
@@ -234,7 +267,7 @@ function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update;
             Your letter <span className="text-brand-text" aria-hidden="true">*</span>
           </Label>
           {history.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => { update({ body: history.at(-1)! }); setHistory((h) => h.slice(0, -1)) }}>
+            <Button variant="ghost" size="sm" onClick={() => { onBody(history.at(-1)!); setHistory((h) => h.slice(0, -1)) }}>
               <UndoLeftIcon data-icon="inline-start" />
               Undo
             </Button>
@@ -243,10 +276,10 @@ function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update;
         <div className={cn("lt-paper relative rounded-2xl ring-1 transition-[box-shadow,opacity] focus-within:ring-2", over ? "ring-destructive" : "ring-border focus-within:ring-brand", busy && "opacity-60")}>
           <Textarea
             id="ls-body"
-            value={d.body}
-            onChange={(e) => update({ body: e.target.value })}
+            value={body}
+            onChange={(e) => onBody(e.target.value)}
             disabled={busy}
-            placeholder={`Dear ${d.recipientName.trim().split(" ")[0] || "…"},`}
+            placeholder={`Dear ${recipientName.trim().split(" ")[0] || "…"},`}
             aria-invalid={over || problems.some((p) => p.field === "body") || undefined}
             className="lt-serif min-h-72 resize-none border-0 bg-transparent px-5 py-4 text-[1.1875rem] leading-relaxed text-[#35251f] shadow-none [field-sizing:content] focus-visible:ring-0 dark:bg-transparent"
           />
@@ -255,24 +288,26 @@ function LetterEditor({ d, update, problems }: { d: StudioDraft; update: Update;
         <div className="flex items-center justify-between gap-2">
           <FieldError problems={problems} field="body" />
           <span className={cn("ml-auto text-xs tabular-nums", over ? "text-destructive" : "text-muted-foreground")} aria-live="polite">
-            {d.body.length.toLocaleString()} / {LETTER_MAX_CHARS.toLocaleString()}
+            {body.length.toLocaleString()} / {LETTER_MAX_CHARS.toLocaleString()}
           </span>
         </div>
       </div>
 
+      {onClosing && closing !== undefined && (
       <div className="flex flex-col gap-2">
         <Label htmlFor="ls-closing" className="eyebrow text-foreground">
           Closing words <span className="text-muted-foreground font-normal tracking-normal normal-case">(optional)</span>
         </Label>
-        <Input id="ls-closing" value={d.moments.closing} onChange={(e) => update({ moments: { ...d.moments, closing: e.target.value } })} maxLength={MOMENT_LIMITS.closing} placeholder="Shown at the very end, above your signature" className="h-12 text-base" />
+        <Input id="ls-closing" value={closing} onChange={(e) => onClosing(e.target.value)} maxLength={MOMENT_LIMITS.closing} placeholder="Shown at the very end, above your signature" className="h-12 text-base" />
         <div className="flex flex-wrap gap-1.5">
           {CLOSINGS.map((c) => (
-            <button key={c} type="button" onClick={() => update({ moments: { ...d.moments, closing: c } })} className="text-muted-foreground hover:text-foreground hover:border-foreground/30 rounded-full border px-3 py-1 text-sm transition-colors">
+            <button key={c} type="button" onClick={() => onClosing(c)} className="text-muted-foreground hover:text-foreground hover:border-foreground/30 rounded-full border px-3 py-1 text-sm transition-colors">
               {c}
             </button>
           ))}
         </div>
       </div>
+      )}
     </div>
   )
 }

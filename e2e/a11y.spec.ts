@@ -10,6 +10,9 @@ for (const path of PAGES) {
     await page.goto(path)
     await page.waitForLoadState("networkidle")
     await page.waitForTimeout(2500) // let entrance animations finish so contrast is measured on final colours
+    // The studios' sticky action bar covers whatever happens to sit under it at this scroll position.
+    // Lay it out in place for the scan, so content and the bar's own buttons are both checked.
+    await page.addStyleTag({ content: "[data-studio-actions] { position: static !important; }" })
     const results = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()
     const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical")
     expect(serious.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([])

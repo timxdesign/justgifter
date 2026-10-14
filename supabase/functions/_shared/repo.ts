@@ -1,7 +1,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { db, must } from "./db.ts"
 import type { Gift, OccasionEvent, Order, PlatformSettings, Product, StockHold, Storefront, Vendor, VendorApplication, WishlistItem, TimelineEntry } from "./domain/index.ts"
-import { DEFAULT_SETTINGS, uid } from "./domain/index.ts"
+import { DEFAULT_SETTINGS, sanitiseLetterDesign, uid } from "./domain/index.ts"
 
 /** Row ↔ domain mapping. Keeps snake_case confined to this file. */
 
@@ -52,7 +52,7 @@ export const toOrder = (r: any): Order => ({
 
 export const toGift = (r: any): Gift => ({
   id: r.id, orderId: r.order_id, recipientName: r.recipient_name, recipientEmail: r.recipient_email ?? undefined, recipientPhone: r.recipient_phone ?? undefined, contactMasked: r.contact_masked,
-  senderDisplayName: r.sender_display_name, anonymous: r.anonymous, message: r.message, revealStyle: r.reveal_style, revealAt: r.reveal_at, timezone: r.timezone, revealStatus: r.reveal_status,
+  senderDisplayName: r.sender_display_name, anonymous: r.anonymous, message: r.message, letterDesign: r.letter_design ? sanitiseLetterDesign(r.letter_design) : null, revealStyle: r.reveal_style, revealAt: r.reveal_at, timezone: r.timezone, revealStatus: r.reveal_status,
   access: r.access, claimStatus: r.claim_status, claimDeadline: r.claim_deadline, tokenHash: r.token_hash ?? "", previewTokenHash: r.preview_token_hash, notifiedAt: r.notified_at,
   openedAt: r.opened_at, thankYouNote: r.thank_you_note ?? undefined, thankYouAt: r.thank_you_at ?? undefined, declinedAt: r.declined_at ?? undefined, contactStopped: r.contact_stopped,
   reported: r.reported, wishlistItemId: r.wishlist_item_id,

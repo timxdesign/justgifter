@@ -26,8 +26,8 @@ export function DemoPanel() {
   const { user, refresh } = useSession()
   const qc = useQueryClient()
   const navigate = useNavigate()
-  // Letters and the letter studio have their own controls along the bottom edge.
-  const raised = /^\/(l\/|send\/letter)/.test(useLocation().pathname)
+  // Letters and the send studios have their own controls along the bottom edge.
+  const raised = /^\/(l\/|send(\/|$))/.test(useLocation().pathname)
 
   useEffect(() => {
     getApi().then((a) => setBackend(a as DemoBackend))

@@ -52,11 +52,14 @@ The same as journey 1, with these differences:
 
 ## 5. Send a gift or a letter (`/send`, `/send/letter`)
 
-A guided conversation that replaces the old one-shot assistant (`/assistant` redirects here).
+Both are **studios**: steps on the left, and a live preview on the right showing exactly what the recipient will open, in a phone or desktop frame. The steps, preview and action bar come from `src/components/studio/`. On narrow screens the preview sits behind a **Preview** button.
 
-- The sender says what they want: a **gift**, a **letter**, or **both**. A detailed first message ("a ₦30k birthday gift for my sister in Lekki by Friday") pre-fills the answers.
-- **Gift path:** the assistant asks only for what's missing (recipient, occasion, budget, interests, things to avoid, area, date). It then shows picks with reasons and confirmed delivery fees. If nothing fits, it says which constraint is limiting. Choosing a pick pre-fills checkout.
-- **Gift with a letter:** after choosing the gift, the conversation helps write the gift message (the assistant drafts it, they write their own, or the assistant improves theirs; five tones; `shorter`, `warmer`, `like-me` revisions). It travels with the gift.
+- **Send a gift** (`/send`) has the steps **Who → Gift → (Letter) → Review**, then hands over to checkout. `/assistant` redirects here, and its `?q=` is read as free text.
+  1. **Who:** choose a gift, a gift with a letter, or just a letter (which goes to `/send/letter`). "Tell us in your own words" fills in what it can, such as "a ₦30k birthday gift for my sister in Lekki by Friday". The recipient's name, relationship and occasion are all optional.
+  2. **Gift:** set the budget (including delivery or not), interests, things to leave out (only for food and self-care) and the delivery area and date. Ideas update as you go and only include approved, in-stock gifts that can arrive in time. When nothing fits, the studio says what's limiting and offers the change most likely to help.
+  3. **Letter** (gift with a letter only): the same writing help as letters on their own, a signature, and the same look (theme, flowers, light, details). After the gift box opens, the recipient finds it sealed in an envelope on that table, and it carries through checkout to `/g/:token`. Gift letters are text only, up to 2,000 characters.
+  4. **Review:** the gift, letter, delivery and estimated cost, each with an edit link, then **Continue to checkout**. Checkout is pre-filled; nothing is charged until payment.
+  The preview shows the closed gift box, opens to the chosen gift, and scrolls to the letter while it's being written.
 - **A letter on its own** goes to the **letter studio** at `/send/letter`, carrying the name and occasion already given. It's free and has three steps, with a live phone or desktop preview beside them:
   1. **Cover:** their name, how it's signed, an optional occasion, and the look. There are three themes: *Flower table*, *Soft envelope* and *Celebration*, which isn't offered for sympathy or get-well. Each has five flowers, day or night light, and petals, butterflies and gold details.
   2. **Moments:** the letter is required (written by hand or with the assistant's help, with undo). The rest are optional: *What I love* (reasons), *Our story* (chapters), *Our photos* (up to 8), *Our day* (a date counted since or until), *Our places*, *Our wishes* and *Our song* (a Spotify, YouTube, Apple Music or Audiomack link). Any moment can be switched off without losing it.

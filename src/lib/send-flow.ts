@@ -78,6 +78,10 @@ export interface SendState {
   sent?: { id: string; status: "scheduled" | "sent"; sendAt: string; contactMasked: string }
   /** Answer being changed; shown in place of its summary. */
   editing?: QuestionId
+  /** Where the sender is in the send studio (gift-studio.ts). */
+  step?: import("./gift-studio").GiftStep
+  /** The look of the gift's letter, chosen in the send studio. */
+  letterDesign?: import("@domain/index.ts").LetterDesign
 }
 
 export type QuestionId =

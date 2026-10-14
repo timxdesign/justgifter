@@ -2,7 +2,7 @@
 import type { Gift, Order, OrderStatus, RefundReason, TimelineEntry } from "./domain/index.ts"
 import {
   acceptanceDeadline, addHours, addMinutes, assertTransition, buildLine, checkEligibility, entriesForPayment, entriesForRefund, formatMoney, maskContact,
-  LETTER_MAX_CHARS, ORDER_STATUS_LABEL, ORDER_TRANSITIONS, orderReference, quote, randomToken, sha256Hex, uid,
+  LETTER_MAX_CHARS, ORDER_STATUS_LABEL, ORDER_TRANSITIONS, orderReference, quote, randomToken, sanitiseLetterDesign, sha256Hex, uid,
 } from "./domain/index.ts"
 import { db, must } from "./db.ts"
 import { fail } from "./http.ts"
@@ -27,7 +27,7 @@ export interface DraftIn {
   vendorId: string; source: "marketplace" | "wishlist" | "storefront"; storefrontId?: string | null; campaign?: string; eventSlug?: string; wishlistItemId?: string; holdId?: string
   purchaseType: "gift" | "self"; lines: { productId: string; variantId: string; quantity: number; personalisationText?: string; wrappingId?: string; expectedUnitPrice?: number }[]
   buyer: { name: string; email: string; phone?: string }; zoneId: any; requestedDate: string | null; addressKnown: boolean; address?: any
-  recipient?: { name: string; email?: string; phone?: string }; gift?: { senderDisplayName: string; anonymous: boolean; message: string; revealStyle: "envelope" | "wrapped_box"; revealAt: string | null; timezone: string }
+  recipient?: { name: string; email?: string; phone?: string }; gift?: { senderDisplayName: string; anonymous: boolean; message: string; letterDesign?: unknown; revealStyle: "envelope" | "wrapped_box"; revealAt: string | null; timezone: string }
   personalisationConfirmed?: boolean
 }
 
@@ -142,7 +142,7 @@ export async function createCheckout(draft: DraftIn, caller: { userId: string | 
       must(await db().from("gifts").insert({
         id: giftId, order_id: id, recipient_name: draft.recipient.name.trim(), recipient_email: draft.recipient.email?.trim().toLowerCase() ?? null, recipient_phone: draft.recipient.phone ?? null,
         contact_masked: maskContact(draft.recipient.email || draft.recipient.phone || ""), sender_display_name: draft.gift.anonymous ? "" : draft.gift.senderDisplayName.trim() || draft.buyer.name.split(" ")[0],
-        anonymous: draft.gift.anonymous, message: draft.gift.message.trim(), reveal_style: draft.gift.revealStyle, reveal_at: draft.gift.revealAt ?? now.toISOString(), timezone: draft.gift.timezone,
+        anonymous: draft.gift.anonymous, message: draft.gift.message.trim(), letter_design: draft.gift.letterDesign && draft.gift.message.trim() ? sanitiseLetterDesign(draft.gift.letterDesign) : null, reveal_style: draft.gift.revealStyle, reveal_at: draft.gift.revealAt ?? now.toISOString(), timezone: draft.gift.timezone,
         claim_status: draft.addressKnown ? "not_required" : "pending", preview_token_hash: await sha256Hex(previewToken), preview_token: previewToken, wishlist_item_id: draft.wishlistItemId ?? null,
       }))
       await db().from("orders").update({ gift_id: giftId }).eq("id", id)

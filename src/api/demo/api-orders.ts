@@ -119,6 +119,7 @@ function revealView(s: Store, gift: Gift, order: Order, preview: boolean): GiftR
     senderDisplayName: gift.anonymous ? null : gift.senderDisplayName,
     anonymous: gift.anonymous,
     message: gift.message,
+    letterDesign: gift.message ? gift.letterDesign : null,
     revealStyle: gift.revealStyle,
     revealStatus: preview ? "available" : gift.revealStatus,
     openedAt: preview ? null : gift.openedAt,

@@ -212,7 +212,13 @@ Letters can be sent on their own or carried as a gift's message. Both are limite
 3. When nothing fits, it reports the **limiting constraint** (`budget`, `zone`, `date`, `stock`) with a suggestion, rather than an empty page.
 4. Claude may re-rank and explain the shortlist, but it can only reference candidate ids it was given.
 
-The `/send` conversation (`src/lib/send-flow.ts`) is a pure state machine on top of this. It never asks the same question twice, and letter-only senders are handed to the letter studio without seeing gift questions. Its tests are in `src/lib/send-flow.test.ts`.
+The send studio builds on this. `src/lib/send-flow.ts` holds the draft and turns free text into answers (`interpret`). `src/lib/gift-studio.ts` decides:
+- which steps apply (the letter step only for a gift with a letter);
+- what's needed to move on (a chosen gift; for a letter, its text and a signature);
+- what the recipient preview shows;
+- what goes to checkout.
+
+Changing the budget, area, date or exclusions clears a chosen gift, because it may no longer qualify. The letter and review steps then fall back to the gift step. Tests: `send-flow.test.ts`, `gift-studio.test.ts`.
 
 ## Occasion-page templates
 

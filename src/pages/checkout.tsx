@@ -930,7 +930,7 @@ function toDraft(v: Values, intent: CheckoutIntent): CheckoutDraft {
     addressKnown,
     address: addressKnown && !wishlist && zone ? { recipientName: addrName, phone: addrPhone, line1: v.addrLine1, line2: v.addrLine2 || undefined, landmark: v.addrLandmark || undefined, area: v.addrArea, city: zone.city, state: zone.state, zoneId: zone.id, instructions: v.addrInstructions || undefined } : undefined,
     recipient: isGift && !wishlist ? { name: v.recipientName, email: contact && !contactIsPhone ? contact : undefined, phone: contactIsPhone ? contact : undefined } : undefined,
-    gift: isGift ? { senderDisplayName: senderName(v), anonymous: v.anonymous, message: v.message, revealStyle: v.revealStyle, revealAt, timezone: LAUNCH_TIMEZONE } : undefined,
+    gift: isGift ? { senderDisplayName: senderName(v), anonymous: v.anonymous, message: v.message, letterDesign: intent.letterDesign ?? null, revealStyle: v.revealStyle, revealAt, timezone: LAUNCH_TIMEZONE } : undefined,
     personalisationConfirmed: v.personalisationConfirmed,
     marketingOptIn: v.marketingOptIn,
   }

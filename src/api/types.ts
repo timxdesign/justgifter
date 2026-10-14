@@ -338,6 +338,8 @@ export interface CheckoutGift {
   senderDisplayName: string
   anonymous: boolean
   message: string
+  /** Shows the message as a designed letter on the gift page. Ignored without a message. */
+  letterDesign?: LetterDesign | null
   revealStyle: RevealStyle
   /** UTC instant; null means reveal immediately after payment is verified. */
   revealAt: Iso | null
@@ -464,6 +466,8 @@ export interface GiftRevealView {
   senderDisplayName: string | null
   anonymous: boolean
   message: string
+  /** When set, the message is shown as a letter with this look (see letter-studio.ts). */
+  letterDesign: LetterDesign | null
   revealStyle: RevealStyle
   revealStatus: RevealStatus
   openedAt: Iso | null

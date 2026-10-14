@@ -35,8 +35,11 @@ const ease = [0.2, 0, 0, 1] as const
 
 export interface LetterExperienceProps {
   letter: LetterView
-  /** live: the recipient's page. preview: inside the studio, where the sender drives it. */
-  mode: "live" | "preview"
+  /**
+   * live: the recipient's letter page. preview: inside a studio, where the sender drives it.
+   * embedded: part of another page (a gift's letter), so no logo and no navigation for a lone letter.
+   */
+  mode: "live" | "preview" | "embedded"
   /** Controlled page (the studio jumps to whatever is being edited). */
   page?: LetterPage
   onPageChange?: (page: LetterPage) => void
@@ -102,7 +105,7 @@ export function LetterExperience({ letter, mode, page: controlled, onPageChange,
       if (shown === "cover" || e.defaultPrevented || e.altKey || e.metaKey || e.ctrlKey) return
       const t = e.target as HTMLElement | null
       if (t?.closest("input, textarea, select, [contenteditable=true], iframe")) return
-      if (mode === "preview" && !sceneRef.current?.parentElement?.contains(t)) return
+      if (mode !== "live" && !sceneRef.current?.parentElement?.contains(t)) return
       if (e.key === "ArrowRight" && next) go(next)
       else if (e.key === "ArrowLeft" && prev) go(prev)
       else return
@@ -142,9 +145,13 @@ export function LetterExperience({ letter, mode, page: controlled, onPageChange,
       <Backdrop design={letter.design} look={look} variant={shown === "cover" || shown === "table" ? "cover" : "frame"} />
 
       <div className="absolute inset-x-0 top-0 z-30 flex items-center justify-between p-[max(0.875rem,2.2cqh)]">
-        <span className="rounded-xl shadow-sm" title="JustGifter">
-          <LogoMark className="size-8" />
-        </span>
+        {mode === "embedded" ? (
+          <span />
+        ) : (
+          <span className="rounded-xl shadow-sm" title="JustGifter">
+            <LogoMark className="size-8" />
+          </span>
+        )}
         <div className="flex items-center gap-2">
         {actions}
         <button
@@ -176,7 +183,7 @@ export function LetterExperience({ letter, mode, page: controlled, onPageChange,
             className="absolute inset-0"
           >
             {shown === "cover" ? (
-              <Cover letter={letter} look={look} design={letter.design} still={still} onOpen={() => go(moments[0])} onSealExpired={onSealExpired} />
+              <Cover letter={letter} look={look} design={letter.design} still={still} onOpen={() => go(moments[0])} onSealExpired={onSealExpired} heading={mode === "live" ? "h1" : "h2"} />
             ) : shown === "table" ? (
               <Table letter={letter} look={look} moments={moments} visited={visited} onOpen={go} finale={mode === "live" ? finale : undefined} still={still} />
             ) : Scene ? (
@@ -186,7 +193,7 @@ export function LetterExperience({ letter, mode, page: controlled, onPageChange,
         </AnimatePresence>
       </div>
 
-      {shown !== "cover" && (
+      {shown !== "cover" && !(mode === "embedded" && moments.length === 1) && (
         <nav aria-label="Letter" className="absolute bottom-[max(0.875rem,2.5cqh)] left-1/2 z-30 flex w-[min(calc(100%-1.5rem),25rem)] -translate-x-1/2 items-center gap-1.5 rounded-full p-1.5 backdrop-blur-md" style={{ background: look.chip, boxShadow: "0 0 0 1px rgb(0 0 0 / 0.06), 0 14px 32px -12px rgb(40 20 10 / 0.45)" }}>
           {shown !== "table" && (
             <NavIcon look={look} label={prev ? `Back to ${label(prev)}` : "Back"} disabled={!prev} onClick={() => prev && go(prev)}>
@@ -264,7 +271,7 @@ function Countdown({ target, look, onDone }: { target: string; look: LetterLook;
   )
 }
 
-function Cover({ letter, look, design, still, onOpen, onSealExpired }: { letter: LetterView; look: LetterLook; design: LetterDesign; still: boolean; onOpen: () => void; onSealExpired?: () => void }) {
+function Cover({ letter, look, design, still, onOpen, onSealExpired, heading: Heading = "h1" }: { letter: LetterView; look: LetterLook; design: LetterDesign; still: boolean; onOpen: () => void; onSealExpired?: () => void; heading?: "h1" | "h2" }) {
   const [opening, setOpening] = useState(false)
   const open = () => {
     if (opening || letter.sealed) return
@@ -278,9 +285,9 @@ function Cover({ letter, look, design, still, onOpen, onSealExpired }: { letter:
         <p className="text-[0.6875rem] font-semibold tracking-[0.3em] uppercase @3xl:text-sm" style={{ color: look.accentText }}>
           {party ? "A surprise for" : "A letter for"}
         </p>
-        <h1 className="lt-script text-[clamp(2.6rem,12cqw,4.5rem)] leading-[1.15] text-balance @3xl:text-[5.5rem]" style={{ color: look.ink }}>
+        <Heading className="lt-script text-[clamp(2.6rem,12cqw,4.5rem)] leading-[1.15] text-balance @3xl:text-[5.5rem]" style={{ color: look.ink }}>
           {letter.recipientName}
-        </h1>
+        </Heading>
       </motion.div>
 
       {party ? <GiftBox look={look} opening={opening} still={still} onOpen={open} sealed={letter.sealed} /> : <Envelope look={look} opening={opening} still={still} onOpen={open} sealed={letter.sealed} theme={design.theme} />}

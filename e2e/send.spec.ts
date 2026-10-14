@@ -5,18 +5,19 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => localStorage.clear())
 })
 
-const composer = (page: Page) => page.getByLabel("Reply to the assistant")
 const demoDb = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem("jg-demo-db")!))
 
 test("letter only: the assistant hands over to the studio → draft → sign in → email it → recipient reads it", async ({ page }) => {
-  await page.goto("/send")
+  await page.goto("/")
   // The demo starts signed in as a persona; sign out to exercise confirming the sender's email.
   await page.getByRole("button", { name: /^Account menu/ }).click()
   await page.getByRole("menuitem", { name: "Sign out" }).click()
   await expect(page.getByRole("button", { name: /^Account menu/ })).toHaveCount(0)
   await page.goto("/send")
-  await page.getByRole("button", { name: /A digital letter/ }).click()
+  await page.getByRole("radio", { name: /Just a letter/ }).click()
   await expect(page).toHaveURL(/\/send\/letter$/)
+  // The old page stays up while the studio's code loads; wait for the studio itself.
+  await expect(page.getByRole("heading", { name: /Write a letter they'll open/ })).toBeVisible()
 
   // Cover: who it's for and how it looks. Nothing about budgets, products or delivery addresses.
   await page.getByLabel("Their name").fill("Ada")
@@ -85,7 +86,9 @@ test("letter by link: moments, a shareable link, and the recipient walks the tab
   await page.getByRole("button", { name: "Open the letter" }).last().click({ force: true })
   await expect(page.getByText("Thank you for this year.")).toBeVisible()
   await page.getByRole("button", { name: /^Next/ }).click()
-  await page.getByRole("button", { name: "Reason 1" }).click()
+  await expect(page.getByRole("button", { name: "Reason 1" })).toBeVisible()
+  // Read the reasons as a list: the same content, without waiting on the bouquet's animation.
+  await page.getByRole("button", { name: "Read them all" }).click()
   await expect(page.getByText("Your laugh")).toBeVisible()
   await page.getByRole("button", { name: "See everything on the table" }).click()
   await expect(page.getByRole("heading", { name: "Everything on this table is yours" })).toBeVisible()
@@ -95,47 +98,58 @@ test("letter by link: moments, a shareable link, and the recipient walks the tab
   await expect(page.getByRole("link", { name: "Write a letter" })).toBeVisible()
 })
 
-test("gift: a detailed first message is understood, answers can be changed, and checkout is pre-filled", async ({ page }) => {
+test("gift with a letter: described in words → ideas → letter → checkout → recipient opens the gift and its letter", async ({ page }) => {
   await page.goto("/send")
-  await composer(page).fill("I need a birthday gift for my sister under ₦50,000")
-  await composer(page).press("Enter")
-  await expect(page.getByText("Got it — a gift, your sister, birthday and up to ₦50,000.")).toBeVisible()
-  // Relationship, occasion and budget are not asked again; only whether delivery is included.
-  await expect(page.getByText("Should ₦50,000 cover delivery too?")).toBeVisible()
-  await page.getByRole("button", { name: "Yes, including delivery" }).click()
+  await page.getByLabel("Describe the gift").fill("I need a birthday gift for my sister Ada under ₦50,000 in Lekki")
+  await page.getByRole("button", { name: "Fill it in" }).click()
+  await expect(page.getByText(/Got it — .*your sister.*birthday.*₦50,000/)).toBeVisible()
+  await page.getByRole("radio", { name: /A gift with a letter/ }).click()
+  await page.getByRole("button", { name: "Next", exact: true }).click()
 
-  await page.getByRole("button", { name: "I'm not sure" }).click() // interests
-  await page.getByRole("button", { name: "Lekki & Ajah" }).click()
-  await page.getByRole("button", { name: "No rush" }).click()
-
-  await expect(page.getByText(/Here are a few ideas for your sister's birthday/)).toBeVisible({ timeout: 15_000 })
-  const cards = page.getByRole("button", { name: "Choose this" })
-  await expect(cards.first()).toBeVisible()
-
-  // Change the budget without restarting: suggestions refresh, everything else stays.
-  await page.getByRole("button", { name: "Change answer: What would you like to spend?" }).click()
+  // Ideas follow the details already given, and refresh when one changes.
+  await expect(page.getByRole("button", { name: "Up to ₦50,000" })).toHaveClass(/bg-primary/)
+  const choose = page.getByRole("button", { name: "Choose this" })
+  await expect(choose.first()).toBeVisible({ timeout: 15_000 })
+  // Moving on without a gift points at the ideas instead.
+  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await expect(page.getByText(/Choose a gift to continue/)).toBeVisible()
   await page.getByRole("button", { name: "Up to ₦100,000" }).click()
-  await expect(page.getByText(/Here are a few ideas/)).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText("Lekki & Ajah", { exact: true })).toBeVisible()
+  await expect(choose.first()).toBeVisible({ timeout: 15_000 })
+  await choose.first().click()
+  await page.getByRole("button", { name: "Next", exact: true }).click()
 
-  await page.getByRole("button", { name: "More affordable" }).click()
-  await expect(page.getByText(/Looking for gifts up to/)).toBeVisible()
-  await expect(cards.first()).toBeVisible({ timeout: 15_000 })
-  await cards.first().click()
+  // The letter: signed, written, and given a look.
+  await page.getByLabel("Sign it as").fill("Tolu")
+  await page.getByLabel(/Your letter/).fill("Dear Ada,\n\nHappy birthday, big sister. Proud of you.")
+  await page.getByRole("button", { name: /Hibiscus/ }).click()
+  await page.getByRole("button", { name: "Next", exact: true }).click()
 
-  await expect(page.getByText(/Would you like to add a letter/)).toBeVisible()
-  await page.getByRole("button", { name: "Yes, add a letter" }).click()
-  // Relationship and occasion are reused; only the missing name is asked for.
-  await page.getByLabel("Name in the greeting").fill("Sis")
-  await page.getByRole("button", { name: "Continue" }).click()
-  await expect(page.getByText("How would you like to write it?")).toBeVisible()
-  await page.getByRole("button", { name: /I'll write it myself/ }).click()
-  await page.getByLabel("Your letter").fill("Happy birthday, sis! Proud of you.\n\nLove, Ada")
-  await page.getByRole("button", { name: "Preview letter" }).click()
-  await page.getByRole("button", { name: "Use this letter" }).click()
+  await expect(page.getByRole("heading", { name: /Ready to send/ })).toBeVisible()
+  await expect(page.getByText(/Proud of you/).first()).toBeVisible()
+  await page.getByRole("button", { name: /Continue to checkout|Checkout/ }).click()
 
-  await expect(page.getByText("Here's your gift and letter.")).toBeVisible()
-  await expect(page.getByText("Nothing is charged until you confirm payment.")).toBeVisible()
-  await page.getByRole("button", { name: "Continue to checkout" }).click()
   await expect(page.getByRole("heading", { name: "Checkout" })).toBeVisible()
+  await expect(page.getByLabel("Their name")).toHaveValue("Ada")
+  await page.getByLabel("Their email or phone").fill("ada.studio@example.com")
+  await page.getByRole("button", { name: "Continue to delivery" }).click()
+  await page.getByLabel("Their phone, for the rider").fill("+234 803 555 0192")
+  await page.getByLabel("Street address").fill("7 Admiralty Way")
+  await page.getByRole("combobox", { name: /^Area in/ }).click()
+  await page.getByRole("option").first().click()
+  await page.getByRole("button", { name: "Continue to gift message" }).click()
+  await expect(page.getByLabel("Your message")).toHaveValue(/Proud of you/)
+  await page.getByRole("button", { name: "Continue to your details" }).click()
+  await page.getByLabel("Your name").fill("Tolu Test")
+  await page.getByLabel("Email for your receipt").fill("tolu.studio@example.com")
+  await page.getByRole("button", { name: /^Pay ₦/ }).click()
+  await page.getByRole("button", { name: /^Pay ₦/ }).click()
+  await expect(page.getByText("Payment confirmed", { exact: true })).toBeVisible({ timeout: 15_000 })
+
+  const link = (await demoDb(page)).outbox.find((m: { to: string; kind: string }) => m.to === "ada.studio@example.com" && m.kind === "gift_reveal")?.link.href
+  expect(link).toMatch(/^\/g\//)
+  await page.goto(link)
+  await page.getByRole("button", { name: "Open without animation" }).click()
+  // The letter waits on its table, sealed, below the gift.
+  await page.getByRole("button", { name: "Pull the ribbon", exact: true }).click({ force: true })
+  await expect(page.getByText(/Happy birthday, big sister/)).toBeVisible()
 })
