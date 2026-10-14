@@ -31,7 +31,7 @@ import { getApi } from "@/api"
 
 const NAV = [
   { to: "/shop", label: "Shop gifts" },
-  { to: "/assistant", label: "Gift assistant" },
+  { to: "/send", label: "Send a gift" },
   { to: "/occasion-pages", label: "Occasion pages" },
   { to: "/vendors", label: "Vendors" },
 ]
@@ -148,7 +148,7 @@ function OccasionsMenu() {
             <span className="font-medium">Not sure what to get?</span> <span className="text-muted-foreground">Answer a few questions and we'll suggest gifts that can arrive in time.</span>
           </p>
           <Button size="sm" asChild>
-            <Link to="/assistant">
+            <Link to="/send?intent=gift">
               <StarsIcon data-icon="inline-start" />
               Ask the assistant
             </Link>
@@ -306,7 +306,7 @@ function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
               ))}
             </div>
           </div>
-          <Link to={q ? `/assistant?q=${encodeURIComponent(q)}` : "/assistant"} onClick={() => onOpenChange(false)} className="bg-brand-soft group/a flex items-center gap-3 rounded-xl p-4">
+          <Link to={q ? `/send?q=${encodeURIComponent(q)}` : "/send"} onClick={() => onOpenChange(false)} className="bg-brand-soft group/a flex items-center gap-3 rounded-xl p-4">
             <StarsIcon className="text-brand-text size-5" />
             <span className="flex-1 text-sm">
               <span className="font-medium">Describe who it's for</span> — the gift assistant suggests things that can arrive in time
@@ -321,7 +321,7 @@ function SearchDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o:
 
 function SiteFooter() {
   const cols = [
-    { title: "Shop", links: [["All gifts", "/shop"], ["Birthday", "/occasions/birthday"], ["Wedding", "/occasions/wedding"], ["Thank you", "/occasions/appreciation"], ["Gift assistant", "/assistant"]] },
+    { title: "Shop", links: [["All gifts", "/shop"], ["Birthday", "/occasions/birthday"], ["Wedding", "/occasions/wedding"], ["Thank you", "/occasions/appreciation"], ["Send a gift", "/send"], ["Write a letter", "/send/letter"]] },
     { title: "Celebrate", links: [["Create an occasion page", "/events/new"], ["How wishlists work", "/occasion-pages"], ["Track an order", "/orders/access"]] },
     { title: "Vendors", links: [["Sell on JustGifter", "/sell"], ["Vendor workspace", "/vendor"], ["Our vendors", "/vendors"]] },
     { title: "Help", links: [["Delivery & payment", "/help"], ["Returns & refunds", "/policies/returns"], ["Privacy", "/policies/privacy"], ["Terms", "/policies/terms"]] },

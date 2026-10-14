@@ -468,6 +468,41 @@ export interface Gift {
   wishlistItemId: string | null
 }
 
+// ---------------------------------------------------------------- Letters
+
+/** scheduled → sent → opened; scheduled → cancelled. "failed" means the email couldn't be handed over. */
+export type LetterStatus = "scheduled" | "sent" | "opened" | "cancelled" | "failed"
+
+/** A digital letter sent without a gift (a gift carries its letter as the gift message). */
+export interface Letter {
+  id: string
+  senderUserId: string
+  senderEmail: string
+  /** Shown in the email ("A letter from …"); the letter body carries its own signature. */
+  senderDisplayName: string
+  recipientName: string
+  /** Null for letters the sender shares by link. */
+  recipientEmail: string | null
+  contactMasked: string
+  delivery: import("./letters.ts").LetterDelivery
+  design: import("./letter-studio.ts").LetterDesign
+  moments: import("./letter-studio.ts").LetterMoments
+  occasion: OccasionId | null
+  tone: import("./letters.ts").LetterTone | null
+  body: string
+  sendAt: Iso
+  status: LetterStatus
+  /** sha256 of the reading link token; the raw token only exists in the email, or with the sender for link letters. */
+  tokenHash: string
+  /** Client-supplied key so a retried send never creates a second letter. */
+  clientRef: string
+  createdAt: Iso
+  sentAt: Iso | null
+  openedAt: Iso | null
+  cancelledAt: Iso | null
+  reported: boolean
+}
+
 // ---------------------------------------------------------------- Occasions
 
 export type EventVisibility = "public" | "unlisted" | "private"
@@ -598,7 +633,7 @@ export type ReportKind = "abusive_message" | "harassment" | "fraudulent_vendor" 
 export interface ContentReport {
   id: string
   kind: ReportKind
-  targetType: "gift" | "event" | "product" | "vendor" | "storefront"
+  targetType: "gift" | "event" | "product" | "vendor" | "storefront" | "letter"
   targetId: string
   details: string
   status: "open" | "actioned" | "dismissed"
@@ -622,6 +657,7 @@ export type JobKind =
   | "claim_expiry"
   | "hold_expiry"
   | "acceptance_timeout"
+  | "letter_delivery"
   | "notification_retry"
   | "reconciliation"
 

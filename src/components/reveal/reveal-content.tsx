@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from "motion/react"
 import { cn } from "cn"
 import type { GiftRevealView } from "@/api"
 import { Img } from "@/components/common"
-import { DeliveryIcon, CheckCircleIcon, ClockCircleIcon, BoxIcon } from "@/components/icons"
+import { DeliveryIcon, CheckCircleIcon, ClockCircleIcon, BoxIcon, LetterIcon } from "@/components/icons"
 import { formatDate, formatWindow } from "@/lib/format"
 import { toDateOnly, LAUNCH_TIMEZONE } from "@domain/index.ts"
 
@@ -13,6 +13,8 @@ const ease = [0.2, 0, 0, 1] as const
 export function RevealContent({ view, children }: { view: GiftRevealView; children?: ReactNode }) {
   const reduce = useReducedMotion()
   const [img, setImg] = useState(0)
+  // Letters written with the assistant can run long: they get their own page-width card.
+  const isLetter = view.message.length > 280 || view.message.split("\n").length > 6
   const enter = (i: number) => (reduce ? {} : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.6, delay: 0.1 * i, ease } })
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pt-6 pb-4 sm:pt-10">
@@ -39,7 +41,13 @@ export function RevealContent({ view, children }: { view: GiftRevealView; childr
                 {view.item.variantName} · from {view.item.vendorName}
               </p>
             </motion.div>
-            {view.message && (
+            {view.message && isLetter && (
+              <motion.p {...enter(3)} className="text-muted-foreground flex items-center gap-2 text-sm">
+                <LetterIcon className="text-brand-text size-4" />
+                {view.anonymous ? "There's a letter with it" : `${view.senderDisplayName} wrote you a letter`} — it's just below.
+              </motion.p>
+            )}
+            {view.message && !isLetter && (
               <motion.blockquote {...enter(3)} className="paper-grain bg-muted/70 relative rounded-2xl p-5">
                 <span aria-hidden="true" className="font-display text-brand absolute -top-3 left-4 text-5xl leading-none">“</span>
                 <p className="font-display text-xl leading-snug whitespace-pre-line italic">{view.message}</p>
@@ -54,6 +62,12 @@ export function RevealContent({ view, children }: { view: GiftRevealView; childr
           </div>
         </div>
       </motion.div>
+      {view.message && isLetter && (
+        <motion.section {...enter(4)} aria-label="Letter" className="paper-grain bg-card shadow-float rounded-[2rem] p-7 sm:p-10">
+          <p className="font-display text-xl leading-relaxed whitespace-pre-line">{view.message}</p>
+          {view.anonymous && <p className="text-muted-foreground mt-4 text-sm">— Someone who's thinking of you</p>}
+        </motion.section>
+      )}
       <motion.div {...enter(4)}>
         <FulfilmentCard view={view} />
       </motion.div>

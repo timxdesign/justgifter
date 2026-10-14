@@ -28,6 +28,7 @@ const POLICIES: Record<string, { title: string; body: [string, string][] }> = {
       ["Addresses", "Delivery addresses are stored separately from everything else and shared only with the vendor fulfilling an order, after they accept it. Wishlist guests never see a host's address."],
       ["Gift links", "Each gift link is unique and private. Previews of gift links never show the item, message or (for anonymous gifts) the sender."],
       ["Recommendations", "The gift assistant uses only what you type and our catalogue. It never receives addresses, contact details or payment information."],
+      ["Digital letters", "You can send a letter on its own, free, or add one to a gift. A letter on its own is emailed to the recipient with a private link; one sent with a gift is revealed with it, and the vendor never sees it. The assistant only uses what you tell it and never invents memories or details. Scheduled letters can be cancelled from Account → Letters until they go out."],
       ["Payments", "Card details go directly to Paystack. JustGifter never sees or stores them."],
       ["Your choices", "Request a copy of your data or deletion from Settings. We keep financial records for as long as the law requires, then delete them."],
     ],

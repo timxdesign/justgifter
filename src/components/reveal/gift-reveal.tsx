@@ -194,7 +194,7 @@ function WrappedBox({ phase, onActivate }: { phase: Phase; onActivate: () => voi
         {/* box body */}
         <motion.span
           className="absolute inset-x-[8%] top-[30%] bottom-0 overflow-hidden rounded-b-2xl rounded-t-md"
-          style={{ background: "linear-gradient(160deg, oklch(0.72 0.17 47), oklch(0.6 0.18 38))", boxShadow: "inset 0 -18px 30px oklch(0.4 0.12 30 / 0.35), 0 20px 40px -12px oklch(0.2 0.05 30 / 0.6)" }}
+          style={{ background: "linear-gradient(160deg, var(--color-primary-400), var(--color-primary-600))", boxShadow: "inset 0 -18px 30px oklch(0.4 0.12 30 / 0.35), 0 20px 40px -12px oklch(0.2 0.05 30 / 0.6)" }}
           animate={opening ? { y: [0, 0, 60], opacity: [1, 1, 0], scale: [1, 1.03, 0.92] } : {}}
           transition={{ duration: 0.9, delay: 1.3, ease, times: [0, 0.3, 1] }}
         >
@@ -205,7 +205,7 @@ function WrappedBox({ phase, onActivate }: { phase: Phase; onActivate: () => voi
         {/* lid */}
         <motion.span
           className="absolute inset-x-[3%] top-[22%] h-[17%] rounded-xl"
-          style={{ background: "linear-gradient(170deg, oklch(0.75 0.17 50), oklch(0.64 0.18 40))", boxShadow: "0 10px 18px -6px oklch(0.25 0.06 30 / 0.55)" }}
+          style={{ background: "linear-gradient(170deg, var(--color-primary-300), var(--color-primary-500))", boxShadow: "0 10px 18px -6px oklch(0.25 0.06 30 / 0.55)" }}
           animate={opening ? { y: [0, 6, -230], x: [0, 0, -40], rotate: [0, 0, -24], opacity: [1, 1, 0] } : {}}
           transition={{ duration: 1.05, delay: 0.45, ease, times: [0, 0.15, 1] }}
         >
@@ -287,7 +287,7 @@ function Envelope({ phase, recipientName, onActivate }: { phase: Phase; recipien
         {/* wax seal */}
         <motion.span
           className="absolute top-[47%] left-1/2 z-[4] grid size-14 -translate-x-1/2 place-items-center rounded-full"
-          style={{ background: "radial-gradient(circle at 35% 30%, oklch(0.72 0.17 47), oklch(0.55 0.17 35))", boxShadow: "0 4px 10px oklch(0.3 0.1 30 / 0.45), inset 0 -3px 6px oklch(0.4 0.12 30 / 0.5)" }}
+          style={{ background: "radial-gradient(circle at 35% 30%, var(--color-primary-400), var(--color-primary-700))", boxShadow: "0 4px 10px oklch(0.3 0.1 30 / 0.45), inset 0 -3px 6px oklch(0.4 0.12 30 / 0.5)" }}
           animate={opening ? { scale: [1, 1.12, 0], opacity: [1, 1, 0] } : {}}
           transition={{ duration: 0.4, ease }}
         >

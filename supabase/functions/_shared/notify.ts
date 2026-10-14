@@ -34,6 +34,7 @@ export async function enqueue(msg: Message) {
 
 const BANNERS: Record<string, Banner> = {
   gift_reveal: "open",
+  letter: "open",
   claim_reminder: "gift",
   receipt: "bag",
   refund: "parcel",
@@ -44,6 +45,7 @@ const BANNERS: Record<string, Banner> = {
 
 const EYEBROWS: Record<string, string> = {
   gift_reveal: "A gift for you",
+  letter: "A letter for you",
   claim_reminder: "Your gift is waiting",
   receipt: "Payment confirmed",
   refund: "Refund",
@@ -63,6 +65,7 @@ function mail(m: { recipient: string; kind: string; subject: string; body: strin
     cta: m.link_href ? { label: m.link_label ?? "Open JustGifter", href: m.link_href } : undefined,
     reason: m.kind === "gift_reveal" || m.kind === "claim_reminder"
       ? "Someone sent you a gift on JustGifter. Gift links are private to you, so please don't forward this email."
+      : m.kind === "letter" ? "Someone sent you a letter on JustGifter. Letter links are private to you, so please don't forward this email."
       : m.kind === "team_invite" ? "You're getting this because a JustGifter admin invited this address to the operations team. If you weren't expecting it, you can ignore this email."
       : m.kind === "vendor_new_order" ? "You're getting this because you run a store on JustGifter." : "You're getting this because of an order, gift or account activity on JustGifter.",
     to: m.recipient,

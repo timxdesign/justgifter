@@ -2,13 +2,14 @@
 import type { Gift, Order, OrderStatus, RefundReason, TimelineEntry } from "./domain/index.ts"
 import {
   acceptanceDeadline, addHours, addMinutes, assertTransition, buildLine, checkEligibility, entriesForPayment, entriesForRefund, formatMoney, maskContact,
-  ORDER_STATUS_LABEL, ORDER_TRANSITIONS, orderReference, quote, randomToken, sha256Hex, uid,
+  LETTER_MAX_CHARS, ORDER_STATUS_LABEL, ORDER_TRANSITIONS, orderReference, quote, randomToken, sha256Hex, uid,
 } from "./domain/index.ts"
 import { db, must } from "./db.ts"
 import { fail } from "./http.ts"
 import { env } from "./env.ts"
 import { enqueue } from "./notify.ts"
 import * as paystack from "./paystack.ts"
+import { dispatchLetter } from "./letters.ts"
 import { activeHolds, audit, bookedByDate, enqueueJob, eventBy, giftBy, orderBy, products, saveGift, saveOrder, settings, timelineEntry, vendorsById } from "./repo.ts"
 
 /**
@@ -66,7 +67,7 @@ function validateDraft(draft: DraftIn) {
     if (!draft.recipient?.name?.trim()) err("Add the recipient's name.")
     if (!draft.recipient?.email && !draft.recipient?.phone) err("Add an email or phone number so we can send the gift reveal.")
     if (!draft.gift) err("Add a message and reveal style.")
-    if ((draft.gift?.message.length ?? 0) > 300) err("Keep the message under 300 characters.")
+    if ((draft.gift?.message.length ?? 0) > LETTER_MAX_CHARS) err(`Keep the message under ${LETTER_MAX_CHARS.toLocaleString("en")} characters.`)
   }
   if (draft.addressKnown && !draft.address) err("Add the delivery address.")
   if (draft.address && draft.address.zoneId !== draft.zoneId) err("The delivery address must be in the selected delivery area.")
@@ -306,6 +307,10 @@ export async function runJob(kind: string, payload: Record<string, string>) {
         const o = await orderBy("id", g.orderId)
         if (o) await cancelWithRefund(o, "claim_expired", "system", "The recipient didn't add a delivery address within the claim window.")
       }
+      return
+    }
+    case "letter_delivery": {
+      await dispatchLetter(payload.letterId)
       return
     }
     case "acceptance_timeout": {

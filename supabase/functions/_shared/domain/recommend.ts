@@ -21,6 +21,34 @@ export interface GiftPreferences {
   deliverBy?: DateOnly
   categories?: CategoryId[]
   wantsWrapping?: boolean
+  /** The budget covers the gift only; delivery is paid on top. Default: budget includes delivery. */
+  budgetExcludesDelivery?: boolean
+  /** Things to leave out: an AVOID_OPTIONS id or a free word, matched against listing text. */
+  avoid?: string[]
+  /** Only listings the sender can personalise (engraving, card text…). */
+  personalisedOnly?: boolean
+  /** Listings already shown, so "show other options" never repeats them. */
+  excludeIds?: string[]
+}
+
+/**
+ * Exclusions are matched against the vendor's own listing text, so they narrow results but are not
+ * an allergen guarantee — the UI says so and points to the vendor for ingredients.
+ */
+export const AVOID_OPTIONS: { id: string; name: string; words: string[] }[] = [
+  { id: "alcohol", name: "Alcohol", words: ["alcohol", "wine", "champagne", "prosecco", "liquor", "spirits", "gin", "whisky", "whiskey", "rum", "vodka", "beer", "cognac"] },
+  { id: "nuts", name: "Nuts", words: ["nut", "nuts", "peanut", "almond", "cashew", "hazelnut", "pecan", "walnut", "pistachio", "praline"] },
+  { id: "dairy", name: "Dairy", words: ["dairy", "milk", "cheese", "butter", "cream", "yoghurt", "yogurt"] },
+  { id: "gluten", name: "Gluten", words: ["gluten", "wheat", "flour", "bread", "pastry", "croissant", "biscuit", "cookie", "cake"] },
+  { id: "fragrance", name: "Strong scents", words: ["fragrance", "fragranced", "scented", "perfume", "diffuser", "candle"] },
+]
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+/** Word-boundary patterns for an avoid list; unknown entries are treated as literal words. */
+export function avoidPattern(avoid: string[] | undefined): RegExp | null {
+  const words = (avoid ?? []).flatMap((a) => AVOID_OPTIONS.find((o) => o.id === a)?.words ?? [a.trim().toLowerCase()]).filter((w) => w.length >= 3)
+  return words.length ? new RegExp(`\\b(${[...new Set(words)].map(escapeRe).join("|")})`, "i") : null
 }
 
 export interface Recommendation {
@@ -67,12 +95,17 @@ export function recommend(products: Product[], prefs: GiftPreferences, ctx: Ctx,
   const excluded = { budget: 0, zone: 0, date: 0, stock: 0 }
   const scored: Recommendation[] = []
   const deliveryUncertain = !prefs.zoneId
+  const avoid = avoidPattern(prefs.avoid)
+  const skip = new Set(prefs.excludeIds ?? [])
 
   for (const p of products) {
     const vendor = ctx.vendors.get(p.vendorId)
     if (!vendor || vendor.status !== "approved" || p.status !== "active") continue
     if (vendor.suppressedFromRecommendations) continue
     if (prefs.categories?.length && !prefs.categories.includes(p.category)) continue
+    if (skip.has(p.id)) continue
+    if (prefs.personalisedOnly && !p.personalisation) continue
+    if (avoid && avoid.test([p.title, p.summary, p.description, ...p.included].join(" "))) continue
 
     const inStock = p.variants
       .filter((v) => sellableUnits(v, ctx.holds, ctx.now) > 0)
@@ -109,7 +142,8 @@ export function recommend(products: Product[], prefs: GiftPreferences, ctx: Ctx,
     }
 
     const wrapFee = prefs.wantsWrapping ? Math.min(...p.wrapping.map((w) => w.fee), Infinity) : 0
-    const extras = (deliveryFee ?? 0) + (Number.isFinite(wrapFee) ? wrapFee : 0)
+    // A gift-only budget leaves delivery out of the comparison; it's still shown in the total.
+    const extras = (prefs.budgetExcludesDelivery ? 0 : (deliveryFee ?? 0)) + (Number.isFinite(wrapFee) ? wrapFee : 0)
     const variant = prefs.budgetMax !== undefined ? inStock.find((v) => v.price + extras <= prefs.budgetMax!) : inStock[0]
     if (!variant) {
       excluded.budget++
@@ -133,8 +167,13 @@ export function recommend(products: Product[], prefs: GiftPreferences, ctx: Ctx,
       const total = variant.price + extras
       // Prefer gifts that use the budget well rather than the cheapest possible item.
       score += 1.5 * (1 - Math.abs(prefs.budgetMax * 0.8 - total) / prefs.budgetMax)
-      reasons.unshift(`${formatMoney(total)} with delivery — within your ${formatMoney(prefs.budgetMax)} budget`)
+      reasons.unshift(
+        prefs.budgetExcludesDelivery
+          ? `${formatMoney(total)} before delivery — within your ${formatMoney(prefs.budgetMax)} gift budget`
+          : `${formatMoney(total)} with delivery — within your ${formatMoney(prefs.budgetMax)} budget`,
+      )
     }
+    if (prefs.personalisedOnly && p.personalisation) reasons.push(`Can be personalised (${p.personalisation.label.toLowerCase()})`)
     if (earliest && prefs.zoneId) {
       const zoneName = zoneById(prefs.zoneId)?.name
       reasons.push(prefs.deliverBy ? `Can arrive in ${zoneName} by ${friendlyDate(prefs.deliverBy, ctx)}` : `Delivers to ${zoneName} from ${friendlyDate(earliest, ctx)}`)
@@ -227,7 +266,7 @@ const OCCASION_WORDS: [RegExp, OccasionId][] = [
   [/anniversary/i, "anniversary"],
   [/baby|newborn|shower/i, "baby-shower"],
   [/graduat|convocation|passed (her|his|their) exams/i, "graduation"],
-  [/housewarming|new (home|house|flat|apartment)|moved/i, "housewarming"],
+  [/housewarming|new (home|house|flat|apartment)|\bmoved (in|into|house)\b/i, "housewarming"],
   [/thank|appreciat|grateful/i, "appreciation"],
   [/get well|sick|hospital|recover/i, "get-well"],
   [/sympathy|condolence|loss|passed away|bereave/i, "sympathy"],
@@ -245,18 +284,18 @@ const RELATIONSHIP_WORDS: [RegExp, Relationship][] = [
 ]
 
 const INTEREST_WORDS: [RegExp, InterestId][] = [
-  [/coffee|tea|latte/i, "coffee-tea"],
-  [/cook|kitchen|chef/i, "cooking"],
-  [/food|snack|eat/i, "foodie"],
-  [/spa|self[- ]care|skincare|relax|wellness/i, "wellness"],
-  [/fashion|style|stylish|bag|outfit/i, "fashion"],
-  [/read|book|novel|journal/i, "reading"],
-  [/decor|interior|candle|home/i, "home-decor"],
-  [/plant|garden/i, "gardening"],
-  [/music|song/i, "music"],
-  [/art|design|creative/i, "art"],
-  [/sweet|chocolate|cake|dessert/i, "sweet-tooth"],
-  [/minimal|simple/i, "minimalist"],
+  [/\b(coffee|tea|teas|latte|espresso)\b/i, "coffee-tea"],
+  [/\b(cook|cooks|cooking|kitchen|chef|baking|bakes)\b/i, "cooking"],
+  [/\b(food|foodie|snacks?|eating|treats)\b/i, "foodie"],
+  [/\b(spa|self[- ]care|skin ?care|relax|relaxing|wellness|pamper)/i, "wellness"],
+  [/\b(fashion|style|stylish|bags?|outfits?|accessories)\b/i, "fashion"],
+  [/\b(read|reads|reading|reader|books?|novels?|journal|journaling)\b/i, "reading"],
+  [/\b(decor|interiors?|candles?|home decor)\b/i, "home-decor"],
+  [/\b(plants?|gardening|garden)\b/i, "gardening"],
+  [/\b(music|songs?|vinyl)\b/i, "music"],
+  [/\b(art|arts|artist|artsy|design|creative)\b/i, "art"],
+  [/\b(sweets?|chocolates?|cakes?|desserts?|sweet tooth)\b/i, "sweet-tooth"],
+  [/\b(minimal|minimalist|simple)\b/i, "minimalist"],
 ]
 
 /** Rule-based fallback used when the AI service is unavailable, slow or returns invalid output. */
@@ -266,7 +305,7 @@ export function extractPreferences(text: string, now: Date, timezone: string): G
   for (const [re, id] of RELATIONSHIP_WORDS) if (re.test(text)) { prefs.relationship = id; break }
   for (const [re, id] of INTEREST_WORDS) if (re.test(text) && !prefs.interests.includes(id)) prefs.interests.push(id)
 
-  const budget = text.match(/(?:under|below|less than|max(?:imum)?|budget(?: of| is)?|around|about|₦|ngn|n)\s*₦?\s*([\d,.]+)\s*(k|m|thousand|million)?/i)
+  const budget = text.match(/(?:\b(?:under|below|less than|max(?:imum)?|budget(?: of| is)?|around|about|ngn|n)|₦)\s*₦?\s*(\d[\d,.]*)\s*(k|m|thousand|million)?\b/i)
   if (budget) {
     let n = parseFloat(budget[1].replace(/,/g, ""))
     const unit = budget[2]?.toLowerCase()
@@ -311,7 +350,21 @@ export function sanitisePreferences(input: unknown): GiftPreferences {
   const interests = Array.isArray(d.interests) ? INTERESTS.filter((i) => (d.interests as unknown[]).includes(i.id)).map((i) => i.id) : []
   const budgetMax = typeof d.budgetMax === "number" && Number.isFinite(d.budgetMax) && d.budgetMax > 0 ? Math.round(d.budgetMax) : undefined
   const deliverBy = typeof d.deliverBy === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d.deliverBy) ? d.deliverBy : undefined
-  return { occasion, relationship, zoneId, interests, budgetMax, deliverBy }
+  const words = (v: unknown, max: number) => (Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.trim().slice(0, 40)))].slice(0, max) : undefined)
+  const avoid = words(d.avoid, 12)
+  const excludeIds = words(d.excludeIds, 60)
+  return {
+    occasion,
+    relationship,
+    zoneId,
+    interests,
+    budgetMax,
+    deliverBy,
+    ...(d.budgetExcludesDelivery === true ? { budgetExcludesDelivery: true } : {}),
+    ...(avoid?.length ? { avoid } : {}),
+    ...(d.personalisedOnly === true ? { personalisedOnly: true } : {}),
+    ...(excludeIds?.length ? { excludeIds } : {}),
+  }
 }
 
 export const productFromPrice = (p: Product) => lowestPrice(p)

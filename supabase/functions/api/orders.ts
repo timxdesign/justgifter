@@ -1,6 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import type { Order } from "../_shared/domain/index.ts"
-import { formatMoney, randomToken, sha256Hex, uid } from "../_shared/domain/index.ts"
+import { formatMoney, LETTER_MAX_CHARS, randomToken, sha256Hex, uid } from "../_shared/domain/index.ts"
 import { db, must } from "../_shared/db.ts"
 import { fail } from "../_shared/http.ts"
 import { cancelWithRefund, createCheckout, createRefund, moveToAcceptance, preview, processVerifiedPayment, transition } from "../_shared/commerce.ts"
@@ -110,7 +110,7 @@ export const orders: Record<string, Handler> = {
     if (!(g.revealStatus === "draft" || g.revealStatus === "scheduled")) throw fail("conflict", "The reveal has already been sent, so the message can't be changed.")
     const p = ctx.args.patch ?? {}
     if (p.message !== undefined) {
-      if (String(p.message).length > 300) throw fail("validation", "Keep the message under 300 characters.")
+      if (String(p.message).length > LETTER_MAX_CHARS) throw fail("validation", `Keep the message under ${LETTER_MAX_CHARS.toLocaleString("en")} characters.`)
       g.message = String(p.message).trim()
     }
     if (p.senderDisplayName !== undefined && !g.anonymous) g.senderDisplayName = String(p.senderDisplayName).slice(0, 40).trim()

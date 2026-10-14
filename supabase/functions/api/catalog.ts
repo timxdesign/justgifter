@@ -192,10 +192,12 @@ export const catalog: Record<string, Handler> = {
         source = "ai"
       }
     }
-    const picks = ranked.slice(0, 9).flatMap((r) => {
+    const picks = ranked.slice(0, 12).flatMap((r) => {
       const p = prods.find((x) => x.id === r.productId)
-      if (!p || !p.variants.some((v) => v.id === r.variantId && v.price === r.price)) return []
-      return [{ product: productCard(p, vendors.get(p.vendorId)!, holds, s, prefs.zoneId), variantId: r.variantId, explanation: r.explanation, reasons: r.reasons, totalWithDelivery: r.deliveryFee !== null ? r.price + r.deliveryFee : null }]
+      const variant = p?.variants.find((v) => v.id === r.variantId && v.price === r.price)
+      if (!p || !variant) return []
+      const deliveryFee = prefs.zoneId ? r.deliveryFee : null
+      return [{ product: productCard(p, vendors.get(p.vendorId)!, holds, s, prefs.zoneId), variantId: r.variantId, variantName: variant.name, price: r.price, deliveryFee, explanation: r.explanation, reasons: r.reasons, totalWithDelivery: deliveryFee !== null ? r.price + deliveryFee : null }]
     })
     const sessionId = uid("rs")
     await db().from("recommendation_sessions").insert({ id: sessionId, model: source === "ai" ? claude.model : null, prompt_version: PROMPT_VERSION, preferences: prefs, retrieved_ids: picks.map((p) => p.product.id), validation: { excluded: result.excluded, limiting: result.limiting }, source })

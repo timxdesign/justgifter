@@ -4,6 +4,7 @@ import type {
   DeliveryAddress,
   Gift,
   LedgerEntry,
+  Letter,
   OccasionEvent,
   Order,
   PaymentAttempt,
@@ -49,7 +50,7 @@ export interface OutboxMessage {
   body: string
   /** Primary call to action, e.g. a gift link. */
   link?: { label: string; href: string }
-  kind: "receipt" | "gift_reveal" | "claim_reminder" | "vendor_new_order" | "otp" | "status" | "host" | "refund" | "ops" | "team_invite"
+  kind: "receipt" | "gift_reveal" | "claim_reminder" | "vendor_new_order" | "otp" | "status" | "host" | "refund" | "ops" | "team_invite" | "letter"
   /** Provider acceptance only — never treated as confirmed inbox delivery (§14 Zoho requirements). */
   status: "accepted" | "failed"
 }
@@ -84,6 +85,9 @@ export interface DemoDb {
   payments: PaymentAttempt[]
   processedWebhookIds: string[]
   gifts: Gift[]
+  letters: Letter[]
+  /** Demo stand-in for the private letter-media bucket: storage path → data URL. */
+  letterMedia: Record<string, string>
   giftSessions: Record<string, { giftId: string; expiresAt: Iso }>
   previewTokens: Record<string, string>
   events: OccasionEvent[]
@@ -110,7 +114,7 @@ export interface DemoDb {
   platformInvites: (TeamInvite & { status: "pending" | "accepted" | "revoked" })[]
 }
 
-export const DB_VERSION = 10
+export const DB_VERSION = 12
 const STORAGE_KEY = "jg-demo-db"
 
 function loadDb(): DemoDb | null {
@@ -228,6 +232,8 @@ export const emptyDb = (): DemoDb => ({
   payments: [],
   processedWebhookIds: [],
   gifts: [],
+  letters: [],
+  letterMedia: {},
   giftSessions: {},
   previewTokens: {},
   events: [],

@@ -9,11 +9,41 @@
 
 /*
  * JustGifter design tokens.
- * Primitives are expressed once here in oklch; components only reference semantic roles.
- * Contrast pairs were measured (WCAG 2.x): fg/bg 17.4, muted-fg/bg 5.8, brand-text/bg 5.2,
- * ink on brand 5.9, paper on plum 15.3, dark muted-fg/bg 7.7. White text on brand fails (3.1) —
- * brand fills always carry ink text.
+ * Brand palettes come from Figma (JustGifter, node 12:28853): Primary (coral) and Secondary (violet).
+ * Figma steps map to Tailwind steps: 10%→50, 20%→100, 30%→200, 40%→300, 50%→400, BASE→500,
+ * 60%→600, 70%→700, 80%→800, 90%→900, 100%→950. Use them as `bg-primary-500`, `text-secondary-700`.
+ * Semantic roles below point at these steps; components should prefer the roles.
+ * Contrast pairs were measured (WCAG 2.x): fg/bg 17.4, muted-fg/bg 5.8, brand-text (primary-700)/bg 5.7,
+ * primary-950 on primary 5.7, white on secondary 5.2, paper on plum 15.3, dark muted-fg/bg 7.7,
+ * dark: primary-950 on primary-400 6.7, primary-300/bg 8.7, secondary-950 on secondary-300 6.4.
+ * White text on primary fails (3.0), so primary and brand fills always carry dark text.
  */
+
+@theme {
+  --color-primary-50: #ffe0db;
+  --color-primary-100: #ffcbc4;
+  --color-primary-200: #ffb1a6;
+  --color-primary-300: #ff9688;
+  --color-primary-400: #ff7c6b;
+  --color-primary-500: #ff624d;
+  --color-primary-600: #d55240;
+  --color-primary-700: #aa4133;
+  --color-primary-800: #803127;
+  --color-primary-900: #55211a;
+  --color-primary-950: #33140f;
+
+  --color-secondary-50: #e0dbff;
+  --color-secondary-100: #cbc4ff;
+  --color-secondary-200: #b1a6ff;
+  --color-secondary-300: #9788ff;
+  --color-secondary-400: #7d6bff;
+  --color-secondary-500: #634dff;
+  --color-secondary-600: #5340d5;
+  --color-secondary-700: #4233aa;
+  --color-secondary-800: #322780;
+  --color-secondary-900: #211a55;
+  --color-secondary-950: #140f33;
+}
 
 @theme inline {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
@@ -97,10 +127,10 @@
   --card-foreground: oklch(0.2 0.02 25);
   --popover: oklch(0.997 0.003 75);
   --popover-foreground: oklch(0.2 0.02 25);
-  --primary: oklch(0.22 0.02 25);
-  --primary-foreground: oklch(0.985 0.007 75);
-  --secondary: oklch(0.955 0.012 70);
-  --secondary-foreground: oklch(0.22 0.02 25);
+  --primary: var(--color-primary-500);
+  --primary-foreground: var(--color-primary-950);
+  --secondary: var(--color-secondary-500);
+  --secondary-foreground: #ffffff;
   --muted: oklch(0.955 0.012 70);
   --muted-foreground: oklch(0.5 0.02 40);
   --accent: oklch(0.945 0.016 65);
@@ -109,12 +139,12 @@
   --destructive-soft: oklch(0.96 0.03 25);
   --border: oklch(0.91 0.01 70);
   --input: oklch(0.87 0.014 70);
-  --ring: oklch(0.68 0.18 45);
+  --ring: var(--color-primary-600);
 
-  --brand: oklch(0.7 0.18 47);
-  --brand-foreground: oklch(0.2 0.02 25);
-  --brand-text: oklch(0.54 0.17 40);
-  --brand-soft: oklch(0.95 0.04 60);
+  --brand: var(--color-primary-500);
+  --brand-foreground: var(--color-primary-950);
+  --brand-text: var(--color-primary-700);
+  --brand-soft: var(--color-primary-50);
   --plum: oklch(0.23 0.05 340);
   --plum-foreground: oklch(0.96 0.01 75);
   --plum-muted: oklch(0.78 0.03 340);
@@ -127,21 +157,21 @@
   --info-soft: oklch(0.96 0.025 250);
 
   /* Single-series chart marks: validated ≥3:1 on each surface (dataviz validator). */
-  --chart-mark: #bb3f00;
-  --chart-1: oklch(0.7 0.18 47);
+  --chart-mark: var(--color-primary-600);
+  --chart-1: var(--color-primary-500);
   --chart-2: oklch(0.45 0.09 340);
   --chart-3: oklch(0.6 0.12 155);
   --chart-4: oklch(0.8 0.12 85);
-  --chart-5: oklch(0.55 0.12 250);
+  --chart-5: var(--color-secondary-500);
 
   --sidebar: oklch(0.975 0.009 72);
   --sidebar-foreground: oklch(0.2 0.02 25);
-  --sidebar-primary: oklch(0.22 0.02 25);
-  --sidebar-primary-foreground: oklch(0.985 0.007 75);
+  --sidebar-primary: var(--color-primary-500);
+  --sidebar-primary-foreground: var(--color-primary-950);
   --sidebar-accent: oklch(0.945 0.016 65);
   --sidebar-accent-foreground: oklch(0.22 0.02 25);
   --sidebar-border: oklch(0.91 0.01 70);
-  --sidebar-ring: oklch(0.68 0.18 45);
+  --sidebar-ring: var(--color-primary-600);
 
   --shadow-border: 0px 0px 0px 1px oklch(0 0 0 / 0.06), 0px 1px 2px -1px oklch(0 0 0 / 0.06), 0px 2px 4px 0px oklch(0 0 0 / 0.04);
   --shadow-border-hover: 0px 0px 0px 1px oklch(0 0 0 / 0.08), 0px 1px 2px -1px oklch(0 0 0 / 0.08), 0px 2px 4px 0px oklch(0 0 0 / 0.06);
@@ -158,10 +188,10 @@
   --card-foreground: oklch(0.95 0.008 75);
   --popover: oklch(0.22 0.014 20);
   --popover-foreground: oklch(0.95 0.008 75);
-  --primary: oklch(0.95 0.008 75);
-  --primary-foreground: oklch(0.2 0.02 25);
-  --secondary: oklch(0.25 0.014 20);
-  --secondary-foreground: oklch(0.95 0.008 75);
+  --primary: var(--color-primary-400);
+  --primary-foreground: var(--color-primary-950);
+  --secondary: var(--color-secondary-300);
+  --secondary-foreground: var(--color-secondary-950);
   --muted: oklch(0.25 0.014 20);
   --muted-foreground: oklch(0.72 0.015 50);
   --accent: oklch(0.27 0.016 25);
@@ -170,12 +200,12 @@
   --destructive-soft: oklch(0.27 0.05 22);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.75 0.16 50);
+  --ring: var(--color-primary-400);
 
-  --brand: oklch(0.75 0.16 50);
-  --brand-foreground: oklch(0.2 0.02 25);
-  --brand-text: oklch(0.78 0.14 52);
-  --brand-soft: oklch(0.28 0.05 45);
+  --brand: var(--color-primary-400);
+  --brand-foreground: var(--color-primary-950);
+  --brand-text: var(--color-primary-300);
+  --brand-soft: var(--color-primary-900);
   --plum: oklch(0.21 0.045 340);
   --plum-foreground: oklch(0.96 0.01 75);
   --plum-muted: oklch(0.78 0.03 340);
@@ -187,21 +217,21 @@
   --info: oklch(0.75 0.11 250);
   --info-soft: oklch(0.26 0.04 250);
 
-  --chart-mark: #d9722f;
-  --chart-1: oklch(0.75 0.16 50);
+  --chart-mark: var(--color-primary-400);
+  --chart-1: var(--color-primary-400);
   --chart-2: oklch(0.7 0.1 340);
   --chart-3: oklch(0.72 0.12 155);
   --chart-4: oklch(0.83 0.12 85);
-  --chart-5: oklch(0.7 0.11 250);
+  --chart-5: var(--color-secondary-300);
 
   --sidebar: oklch(0.19 0.013 20);
   --sidebar-foreground: oklch(0.95 0.008 75);
-  --sidebar-primary: oklch(0.95 0.008 75);
-  --sidebar-primary-foreground: oklch(0.2 0.02 25);
+  --sidebar-primary: var(--color-primary-400);
+  --sidebar-primary-foreground: var(--color-primary-950);
   --sidebar-accent: oklch(0.25 0.014 20);
   --sidebar-accent-foreground: oklch(0.95 0.008 75);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.75 0.16 50);
+  --sidebar-ring: var(--color-primary-400);
 
   --shadow-border: 0 0 0 1px oklch(1 0 0 / 0.08);
   --shadow-border-hover: 0 0 0 1px oklch(1 0 0 / 0.13);

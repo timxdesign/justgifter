@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from "react"
-import { createBrowserRouter, Navigate, Outlet } from "react-router"
+import { createBrowserRouter, Navigate, Outlet, useLocation } from "react-router"
 import { PublicLayout } from "@/app/layouts/public-layout"
 import { RootLayout } from "@/app/layouts/root-layout"
 import { WorkspaceLayout } from "@/app/layouts/workspace-layout"
@@ -16,6 +16,12 @@ const page = (load: () => Promise<{ default: ComponentType }>) => {
   )
 }
 
+/** The one-shot assistant became the send-gift conversation; old links (and their ?q=) still work. */
+function AssistantRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/send${search}`} replace />
+}
+
 export const router = createBrowserRouter([
   {
     element: <RootLayout />,
@@ -29,7 +35,8 @@ export const router = createBrowserRouter([
           { path: "shop", element: page(() => import("@/pages/shop")) },
           { path: "occasions/:occasion", element: page(() => import("@/pages/shop")) },
           { path: "products/:slug", element: page(() => import("@/pages/product")) },
-          { path: "assistant", element: page(() => import("@/pages/assistant")) },
+          { path: "send", element: page(() => import("@/pages/send")) },
+          { path: "assistant", element: <AssistantRedirect /> },
           { path: "vendors", element: page(() => import("@/pages/vendors")) },
           { path: "occasion-pages", element: page(() => import("@/pages/occasion-pages")) },
           { path: "help", element: page(() => import("@/pages/help")) },
@@ -45,6 +52,7 @@ export const router = createBrowserRouter([
               { index: true, element: page(() => import("@/pages/account/orders")) },
               { path: "orders/:id", element: page(() => import("@/pages/account/order-detail")) },
               { path: "saved", element: page(() => import("@/pages/account/saved")) },
+              { path: "letters", element: <RequireAuth>{page(() => import("@/pages/account/letters"))}</RequireAuth> },
               { path: "settings", element: <RequireAuth>{page(() => import("@/pages/account/settings"))}</RequireAuth> },
             ],
           },
@@ -66,6 +74,8 @@ export const router = createBrowserRouter([
       { path: "events/:id/edit", element: <RequireAuth>{page(() => import("@/pages/host/event-editor"))}</RequireAuth> },
       { path: "e/:slug", element: page(() => import("@/pages/event-public")) },
       { path: "g/:token", element: page(() => import("@/pages/gift")) },
+      { path: "send/letter", element: page(() => import("@/pages/letter-studio")) },
+      { path: "l/:token", element: page(() => import("@/pages/letter")) },
       { path: "preview/gift/:token", element: page(() => import("@/pages/gift-preview")) },
       { path: "mfa", element: <RequireAuth>{page(() => import("@/pages/auth/mfa"))}</RequireAuth> },
       { path: "pay/demo/:reference", element: page(() => import("@/pages/pay-demo")) },

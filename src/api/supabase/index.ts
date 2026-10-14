@@ -107,6 +107,21 @@ export async function createSupabaseApi(): Promise<Api> {
     recommend: (req) => call("recommend", req as Record<string, unknown>),
     recordRecommendationFeedback: (sessionId, productId, helpful) => call("recordRecommendationFeedback", { sessionId, productId, helpful }),
 
+    // ---------------------------------------------------------------- letters
+    composeLetter: (req) => call("composeLetter", { req }),
+    sendLetter: (input) => call("sendLetter", { input }),
+    async uploadLetterPhoto(blob) {
+      const { path, token, bucket } = await call<{ path: string; token: string; bucket: string }>("uploadLetterPhotoUrl")
+      const { error } = await sb.storage.from(bucket).uploadToSignedUrl(path, token, blob, { contentType: "image/webp" })
+      if (error) throw new ApiError("unavailable", "The photo didn't upload. Try again.")
+      return { path }
+    },
+    listMyLetters: () => call("listMyLetters"),
+    cancelLetter: (id) => call("cancelLetter", { id }),
+    renewLetterLink: (id) => call("renewLetterLink", { id }),
+    openLetter: (token) => call("openLetter", { token }),
+    reportLetter: (token, input) => call("reportLetter", { token, input }),
+
     // ---------------------------------------------------------------- checkout
     previewCheckout: (draft) => call("previewCheckout", { draft }),
     async createCheckout(draft) {

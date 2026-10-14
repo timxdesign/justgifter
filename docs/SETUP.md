@@ -88,3 +88,44 @@ Every push to `main` builds and deploys the site; other branches get a private p
 3. Root directory: `/` (leave blank). No build variables are needed: public values come from `.env.production`.
 
 Edge Functions and database migrations are not part of this build; deploy them with the Supabase CLI.
+
+## Configuration reference
+
+Every variable the app reads. `npm run docs:check` fails if one is added to an `.env.example` without being listed here.
+
+### Frontend (`.env`, `.env.production`). Public: shipped in browser JavaScript
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `VITE_SUPABASE_URL` | for production | Supabase project URL. Leave it empty to run the demo backend. |
+| `VITE_SUPABASE_ANON_KEY` | for production | Publishable anon key. **Never the service role key.** |
+| `VITE_SITE_URL` | no | Canonical origin for links and share URLs (default: the current origin). |
+| `VITE_DEMO_MODE` | no | `true` forces the demo backend even when Supabase is configured. E2E tests use it. |
+| `VITE_TURNSTILE_SITE_KEY` | no | Cloudflare Turnstile widget key. |
+| `VITE_SENTRY_DSN` | no | Error reporting (the SDK isn't installed yet). |
+
+### Edge Function secrets (`supabase/.env` → `supabase secrets set`)
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `SITE_URL` | yes | Public site origin. Used for callback and email links. |
+| `ALLOWED_ORIGINS` | yes | Comma-separated CORS allowlist for the `api` function. Include `http://127.0.0.1:5173` for local development. |
+| `PAYSTACK_SECRET_KEY` | yes | Paystack secret key (test keys until launch). Also verifies webhook signatures. |
+| `ANTHROPIC_API_KEY` | no | Enables Claude features. Without it they use rule-based fallbacks. |
+| `AI_MODEL` | no | Default `claude-opus-5-5`. Change it only after running the evaluation set. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | for email | ZeptoMail SMTP relay. |
+| `MAIL_FROM` | no | Sender, for example `JustGifter <hello@justgifter.com>`. |
+| `SEND_REAL_EMAIL` | no | `true` only in production. Anything else logs outbox emails instead of sending them. |
+| `CRON_SECRET` | yes | Shared secret the scheduler sends to the `jobs` function. It must match the Vault secret `cron_secret`. |
+| `TURNSTILE_SECRET_KEY` | no | Server-side Turnstile verification. |
+| `SEND_EMAIL_HOOK_SECRET` | for auth emails | The `v1,whsec_…` secret generated for the Auth Send Email hook. |
+| `AUTH_CODE_SECONDS` | no | Default 600. Must equal the Auth OTP expiry. |
+
+Supabase injects `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` automatically.
+
+### Cloudflare Worker (`wrangler.jsonc` → `vars`)
+
+| Variable | Purpose |
+|---|---|
+| `PUBLIC_SITE_URL` | Canonical URLs in SEO tags and the sitemap. |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | Public catalogue reads for link previews. These are public values only. |

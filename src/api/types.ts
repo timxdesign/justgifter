@@ -14,6 +14,13 @@ import type {
   GiftPreferences,
   Iso,
   LedgerEntry,
+  LetterComposeRequest,
+  LetterComposeResult,
+  LetterDelivery,
+  LetterDesign,
+  LetterMoments,
+  LetterStatus,
+  LetterTone,
   LimitingConstraint,
   Minor,
   OccasionId,
@@ -31,6 +38,7 @@ import type {
   RevealStyle,
   ReportKind,
   ScheduledJob,
+  SendLetterInput,
   AuditEvent,
   StoreAccent,
   StoreCollection,
@@ -233,6 +241,11 @@ export interface AssistantRequest {
 export interface AssistantPick {
   product: ProductCard
   variantId: string
+  variantName: string
+  /** Price of the suggested variant. */
+  price: Minor
+  /** Confirmed only when a delivery area was given; otherwise null. */
+  deliveryFee: Minor | null
   explanation: string
   reasons: string[]
   totalWithDelivery: Minor | null
@@ -248,6 +261,54 @@ export interface AssistantResponse {
   source: "ai" | "rules"
   sessionId: string
 }
+
+// ---------------------------------------------------------------- Letters
+
+/** The sender's view of a letter they sent or scheduled. */
+export interface LetterSummary {
+  id: string
+  recipientName: string
+  /** Masked email, or "Shared by link". */
+  contactMasked: string
+  delivery: LetterDelivery
+  design: LetterDesign
+  occasion: OccasionId | null
+  tone: LetterTone | null
+  body: string
+  status: LetterStatus
+  /** Email letters: when it's emailed. Link letters: when the link starts showing the letter. */
+  sendAt: Iso
+  sentAt: Iso | null
+  openedAt: Iso | null
+  createdAt: Iso
+}
+
+/** Returned once, on send. `link` is the only copy of a link letter's address (only its hash is stored). */
+export interface LetterSent extends LetterSummary {
+  link: string | null
+}
+
+/** Moments as the reader gets them: photos come as short-lived signed URLs, never storage paths. */
+export type LetterViewMoments = Omit<LetterMoments, "photos"> & { photos: { url: string; caption: string }[] }
+
+/** What the recipient sees. Contacts are never included. */
+export interface LetterView {
+  recipientName: string
+  recipientFirstName: string
+  senderDisplayName: string
+  /** Empty while sealed. */
+  body: string
+  occasion: OccasionId | null
+  sentAt: Iso
+  design: LetterDesign
+  /** Empty while sealed. */
+  moments: LetterViewMoments
+  /** A link letter opened before its time: the page shows a sealed envelope and a countdown. */
+  sealed: boolean
+  opensAt: Iso
+}
+
+export type { LetterComposeRequest, LetterComposeResult, LetterDelivery, LetterDesign, LetterMoments, SendLetterInput }
 
 // ---------------------------------------------------------------- Cart & checkout
 
@@ -707,6 +768,26 @@ export interface Api {
   recordStoreVisit(storefrontId: string, kind: "visit" | "product_view" | "checkout_start", productId?: string): Promise<void>
   recommend(req: AssistantRequest): Promise<AssistantResponse>
   recordRecommendationFeedback(sessionId: string, productId: string, helpful: boolean): Promise<void>
+
+  // letters
+  /** Drafts, polishes or revises a letter. Never stored; nothing is sent. */
+  composeLetter(req: LetterComposeRequest): Promise<LetterComposeResult>
+  /**
+   * Signed-in senders only. Emails it (now or later) or returns a link to share. A repeated
+   * clientRef returns the original letter; for a link letter that means a fresh link, because the
+   * first response may never have arrived.
+   */
+  sendLetter(input: SendLetterInput): Promise<LetterSent>
+  /** Signed-in senders only. Stores a re-encoded photo privately; the path goes in `moments.photos`. */
+  uploadLetterPhoto(blob: Blob): Promise<{ path: string }>
+  listMyLetters(): Promise<LetterSummary[]>
+  /** Only while still scheduled. */
+  cancelLetter(id: string): Promise<void>
+  /** Link letters only. Issues a new link; the old one stops working. */
+  renewLetterLink(id: string): Promise<{ link: string }>
+  /** Recipient link. Marks the letter opened (unless sealed); null when the link isn't valid. */
+  openLetter(token: string): Promise<LetterView | null>
+  reportLetter(token: string, input: { kind: ReportKind; details: string; stopContact: boolean }): Promise<void>
 
   // checkout
   previewCheckout(draft: CheckoutDraft): Promise<CheckoutPreview>

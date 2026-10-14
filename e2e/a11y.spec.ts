@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright"
 
 // WCAG 2.2 AA automated checks on the main customer surfaces (PRD §16). Manual keyboard and
 // screen-reader passes are still required before launch.
-const PAGES = ["/", "/shop", "/products/velvet-red-roses", "/assistant", "/stores/bloom-and-bisi", "/occasion-pages", "/help", "/signin", "/cart"]
+const PAGES = ["/", "/shop", "/products/velvet-red-roses", "/send", "/send/letter", "/stores/bloom-and-bisi", "/occasion-pages", "/help", "/signin", "/cart"]
 
 for (const path of PAGES) {
   test(`no serious accessibility violations on ${path}`, async ({ page }) => {

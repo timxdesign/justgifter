@@ -187,9 +187,9 @@ export function DateStrip({ dates, value, onChange, earliest, label = "Delivery 
               selected ? "bg-primary text-primary-foreground" : "bg-card shadow-border hover:shadow-border-hover",
             )}
           >
-            <span className={cn("text-[0.6875rem] font-medium uppercase", selected ? "opacity-80" : "text-muted-foreground")}>{rel === "Today" || rel === "Tomorrow" ? rel : weekday}</span>
+            <span className={cn("text-[0.6875rem] font-medium uppercase", !selected && "text-muted-foreground")}>{rel === "Today" || rel === "Tomorrow" ? rel : weekday}</span>
             <span className="tabular text-lg leading-tight font-semibold">{Number(day)}</span>
-            <span className={cn("text-[0.6875rem]", selected ? "opacity-80" : "text-muted-foreground")}>{month}</span>
+            <span className={cn("text-[0.6875rem]", !selected && "text-muted-foreground")}>{month}</span>
             {earliest === d && !selected && <span className="sr-only">Earliest available</span>}
           </button>
         )

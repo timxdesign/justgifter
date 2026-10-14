@@ -9,11 +9,12 @@ import { gifts } from "./gifts.ts"
 import { events } from "./events.ts"
 import { vendor } from "./vendor.ts"
 import { admin } from "./admin.ts"
+import { letters } from "./letters.ts"
 
-const handlers: Record<string, Handler> = { ...catalog, ...orders, ...gifts, ...events, ...vendor, ...admin }
+const handlers: Record<string, Handler> = { ...catalog, ...orders, ...gifts, ...events, ...vendor, ...admin, ...letters }
 
 // Simple per-instance rate limit for unauthenticated, abuse-prone methods (TECH 04).
-const LIMITED = new Set(["requestOrderAccess", "sendGiftCode", "verifyGiftCode", "verifyOrderAccess", "recommend", "createCheckout"])
+const LIMITED = new Set(["requestOrderAccess", "sendGiftCode", "verifyGiftCode", "verifyOrderAccess", "recommend", "createCheckout", "composeLetter", "sendLetter", "uploadLetterPhotoUrl", "renewLetterLink", "openLetter", "reportLetter"])
 const hits = new Map<string, number[]>()
 function rateLimit(key: string, max: number, windowMs: number) {
   const now = Date.now()
@@ -31,7 +32,7 @@ Deno.serve(async (req) => {
     const handler = handlers[method]
     if (!handler) throw fail("not_found", "Unknown method.")
     const caller = await getCaller(req)
-    if (LIMITED.has(method)) rateLimit(`${method}:${req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? caller.userId ?? "anon"}`, method === "recommend" ? 20 : 10, 60_000)
+    if (LIMITED.has(method)) rateLimit(`${method}:${req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? caller.userId ?? "anon"}`, method === "recommend" || method === "composeLetter" ? 20 : 10, 60_000)
     const ctx: Ctx = { req, caller, args: args ?? {} }
     const result = await handler(ctx)
     return json(req, { data: result ?? null })

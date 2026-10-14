@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { useNavigate } from "react-router"
+import { useLocation, useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
 import { toast } from "sonner"
@@ -26,6 +26,8 @@ export function DemoPanel() {
   const { user, refresh } = useSession()
   const qc = useQueryClient()
   const navigate = useNavigate()
+  // Letters and the letter studio have their own controls along the bottom edge.
+  const raised = /^\/(l\/|send\/letter)/.test(useLocation().pathname)
 
   useEffect(() => {
     getApi().then((a) => setBackend(a as DemoBackend))
@@ -60,7 +62,7 @@ export function DemoPanel() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="press bg-plum text-plum-foreground fixed bottom-4 left-4 z-50 flex items-center gap-2 rounded-full py-2 pr-4 pl-2.5 text-sm shadow-[var(--shadow-float)]"
+        className={cn("press bg-plum text-plum-foreground fixed left-4 z-50 flex", raised ? "bottom-28" : "bottom-4", "items-center gap-2 rounded-full py-2 pr-4 pl-2.5 text-sm shadow-[var(--shadow-float)]")}
       >
         <span className="bg-gold text-plum rounded-full px-2 py-1 text-[0.625rem] leading-none font-bold tracking-wider">DEMO</span>
         <span className="max-w-36 truncate">{user ? user.name.split(" ")[0] : "Guest"}</span>
@@ -168,7 +170,7 @@ export function DemoPanel() {
 const EMPTY: OutboxMessage[] = []
 
 function InboxItem({ m, onOpen }: { m: OutboxMessage; onOpen: (href: string) => void }) {
-  const tone = m.kind === "gift_reveal" ? "brand" : m.kind === "otp" ? "info" : m.kind === "refund" ? "warning" : "muted"
+  const tone = m.kind === "gift_reveal" || m.kind === "letter" ? "brand" : m.kind === "otp" ? "info" : m.kind === "refund" ? "warning" : "muted"
   return (
     <li className="bg-card shadow-border flex flex-col gap-1.5 rounded-xl p-3.5">
       <div className="flex items-center justify-between gap-2">

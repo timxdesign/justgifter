@@ -19,7 +19,7 @@ interface Meta {
   jsonLd?: unknown
 }
 
-const PRIVATE = [/^\/g\//, /^\/preview\//, /^\/checkout/, /^\/account/, /^\/orders/, /^\/pay\//, /^\/vendor/, /^\/admin/, /^\/events/, /^\/mfa/, /^\/signin/, /^\/cart/]
+const PRIVATE = [/^\/g\//, /^\/l\//, /^\/preview\//, /^\/checkout/, /^\/account/, /^\/orders/, /^\/pay\//, /^\/vendor/, /^\/admin/, /^\/events/, /^\/mfa/, /^\/signin/, /^\/cart/]
 
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
@@ -38,7 +38,8 @@ function csp(env: Env) {
     `img-src 'self' data: blob: ${supabase}`,
     "font-src 'self' data:",
     `connect-src 'self' ${supabase} ${supabase.replace("https://", "wss://")}`,
-    "frame-src https://challenges.cloudflare.com https://checkout.paystack.com",
+    // Music players in letters ("Our song"). Must match SONG_FRAME_ORIGINS in domain/letter-studio.ts (a test checks).
+    "frame-src https://challenges.cloudflare.com https://checkout.paystack.com https://open.spotify.com https://www.youtube-nocookie.com https://embed.music.apple.com https://audiomack.com",
     "form-action 'self' https://checkout.paystack.com",
     "base-uri 'self'",
     "frame-ancestors 'none'",
@@ -123,7 +124,7 @@ export default {
     const url = new URL(request.url)
 
     if (url.pathname === "/robots.txt") {
-      return new Response(`User-agent: *\nDisallow: /g/\nDisallow: /preview/\nDisallow: /checkout\nDisallow: /account\nDisallow: /orders\nDisallow: /vendor\nDisallow: /admin\nDisallow: /events\nAllow: /\nSitemap: ${env.PUBLIC_SITE_URL || url.origin}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain", "Cache-Control": "public, max-age=3600" } })
+      return new Response(`User-agent: *\nDisallow: /g/\nDisallow: /l/\nDisallow: /preview/\nDisallow: /checkout\nDisallow: /account\nDisallow: /orders\nDisallow: /vendor\nDisallow: /admin\nDisallow: /events\nAllow: /\nSitemap: ${env.PUBLIC_SITE_URL || url.origin}/sitemap.xml\n`, { headers: { "Content-Type": "text/plain", "Cache-Control": "public, max-age=3600" } })
     }
     if (url.pathname === "/sitemap.xml") {
       const site = env.PUBLIC_SITE_URL || url.origin

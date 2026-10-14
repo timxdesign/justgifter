@@ -199,3 +199,6 @@ export { MaximizeSquareMinimalisticIcon } from "@solar-icons/react/linear/maximi
 export { SkipNextIcon } from "@solar-icons/react/linear/skip-next"
 export { LikeIcon } from "@solar-icons/react/linear/like"
 export { DislikeIcon } from "@solar-icons/react/linear/dislike"
+// Letter studio and reader.
+export { MinimizeSquareMinimalisticIcon } from "@solar-icons/react/linear/minimize-square-minimalistic"
+export { DownloadMinimalisticIcon } from "@solar-icons/react/linear/download-minimalistic"

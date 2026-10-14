@@ -1,4 +1,4 @@
-import type { Gift, Order, OrderStatus, Refund, RefundReason, StockHold, TimelineEntry } from "@domain/index.ts"
+import type { Gift, Letter, Order, OrderStatus, Refund, RefundReason, StockHold, TimelineEntry } from "@domain/index.ts"
 import {
   acceptanceDeadline,
   addHours,
@@ -10,6 +10,7 @@ import {
   entriesForPayment,
   entriesForRefund,
   formatMoney,
+  LETTER_MAX_CHARS,
   maskContact,
   ORDER_STATUS_LABEL,
   ORDER_TRANSITIONS,
@@ -119,7 +120,7 @@ function validateDraft(draft: CheckoutDraft) {
     if (!draft.recipient?.name.trim()) errors.push("Add the recipient's name.")
     if (!draft.recipient?.email && !draft.recipient?.phone) errors.push("Add an email or phone number so we can send the gift reveal.")
     if (!draft.gift) errors.push("Add a message and reveal style.")
-    if (draft.gift && draft.gift.message.length > 300) errors.push("Keep the message under 300 characters.")
+    if (draft.gift && draft.gift.message.length > LETTER_MAX_CHARS) errors.push(`Keep the message under ${LETTER_MAX_CHARS.toLocaleString("en")} characters.`)
   }
   if (draft.addressKnown && !draft.address) errors.push("Add the delivery address.")
   if (draft.address && draft.address.zoneId !== draft.zoneId) errors.push("The delivery address must be in the selected delivery area.")
@@ -461,6 +462,27 @@ export function expireStalePayments(s: Store) {
 
 // ---------------------------------------------------------------- Gift reveal
 
+/**
+ * Called by the letter_delivery job. Email letters get their reading link minted (hash stored only)
+ * and emailed; link letters already have one, so their time simply arrives.
+ */
+export async function dispatchLetter(s: Store, letter: Letter) {
+  if (letter.status !== "scheduled") return
+  letter.status = "sent"
+  letter.sentAt = s.nowIso()
+  if (letter.delivery === "link" || !letter.recipientEmail) return
+  const token = randomToken()
+  letter.tokenHash = await sha256Hex(token)
+  s.notify({
+    to: letter.recipientEmail,
+    kind: "letter",
+    // Like gift reveals, the subject never includes the letter's contents.
+    subject: `${letter.senderDisplayName} wrote you a letter`,
+    body: "Open it whenever you're ready. The link is private to you — please don't forward it.",
+    link: { label: "Read your letter", href: `/l/${token}` },
+  })
+}
+
 /** Mints the recipient's link token (only its hash is stored) and sends the reveal (§5 scheduling rules). */
 export async function dispatchReveal(s: Store, gift: Gift) {
   const order = s.db.orders.find((o) => o.id === gift.orderId)!
@@ -604,6 +626,11 @@ async function runJob(s: Store, kind: string, payload: Record<string, string>) {
         gift.access = "expired"
         cancelWithRefund(s, order, "claim_expired", "system", "The recipient didn't add a delivery address within the claim window.")
       }
+      return
+    }
+    case "letter_delivery": {
+      const letter = s.db.letters.find((l) => l.id === payload.letterId)
+      if (letter) await dispatchLetter(s, letter)
       return
     }
     case "acceptance_timeout": {

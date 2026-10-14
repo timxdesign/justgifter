@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { cn } from "cn"
 import type { DateOnly, ZoneId } from "@domain/index.ts"
-import { canSendWithoutAddress, zoneById, zonedTimeToUtc, LAUNCH_TIMEZONE, ZONES } from "@domain/index.ts"
+import { canSendWithoutAddress, zoneById, zonedTimeToUtc, LAUNCH_TIMEZONE, LETTER_MAX_CHARS, ZONES } from "@domain/index.ts"
 import type { CheckoutDraft, CheckoutPreview } from "@/api"
 import { errorMessage } from "@/api/errors"
 import { Logo } from "@/components/brand/logo"
@@ -82,7 +82,7 @@ const schema = z
       else req("recipientContact", z.email().safeParse(v.recipientContact).success || isPhone(v.recipientContact), "Enter a valid email address or phone number")
     }
     if (isGift) {
-      req("message", v.message.length <= 300, "Keep the message under 300 characters")
+      req("message", v.message.length <= LETTER_MAX_CHARS, `Keep the message under ${LETTER_MAX_CHARS.toLocaleString("en")} characters`)
       req("senderDisplayName", v.senderDisplayName.length <= 40, "Keep the name under 40 characters")
       if (!v.wishlist && v.revealScheduled) {
         req("revealDate", Boolean(v.revealDate), "Choose a date for the reveal")
@@ -184,9 +184,9 @@ function CheckoutForm({ intent }: { intent: CheckoutIntent }) {
       addrLandmark: "",
       addrArea: "",
       addrInstructions: "",
-      senderDisplayName: user?.name.split(" ")[0] ?? "",
+      senderDisplayName: intent.senderDisplayName?.slice(0, 40) ?? user?.name.split(" ")[0] ?? "",
       anonymous: false,
-      message: "",
+      message: intent.message ?? "",
       revealStyle: "wrapped_box",
       revealScheduled: false,
       revealDate: "",
@@ -410,10 +410,10 @@ function CheckoutForm({ intent }: { intent: CheckoutIntent }) {
               ))}
             </div>
           )}
-          <Textarea id="message" {...register("message")} rows={4} maxLength={300} placeholder="Write something from the heart, or pick an idea above." className="text-base" />
+          <Textarea id="message" {...register("message")} rows={(v.message?.length ?? 0) > 300 ? 10 : 4} maxLength={LETTER_MAX_CHARS} placeholder="Write something from the heart, or pick an idea above." className="text-base" />
           <FieldDescription className="flex justify-between gap-4">
             <span>You can edit it until the reveal is sent.</span>
-            <span className="tabular">{v.message?.length ?? 0}/300</span>
+            <span className="tabular">{(v.message?.length ?? 0).toLocaleString()}/{LETTER_MAX_CHARS.toLocaleString()}</span>
           </FieldDescription>
           <FieldError errors={[formState.errors.message]} />
         </Field>

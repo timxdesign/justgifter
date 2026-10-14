@@ -7,6 +7,7 @@ export function AccountTabs() {
   const tabs = [
     { to: "/account", label: "Orders & gifts", end: true },
     ...(user ? [{ to: "/events", label: "Occasion pages", end: false }] : []),
+    ...(user ? [{ to: "/account/letters", label: "Letters", end: false }] : []),
     { to: "/account/saved", label: "Saved", end: false },
     ...(user ? [{ to: "/account/settings", label: "Settings", end: false }] : []),
   ]

@@ -6,7 +6,9 @@ import { checkEligibility, canSendWithoutAddress } from "./eligibility.ts"
 import { assertTransition, canTransition, ORDER_TRANSITIONS, REFUND_TRANSITIONS, ORDER_STATUS_LABEL } from "./states.ts"
 import { wishAvailability, wishlistRemaining, sellableUnits, resolveLatePayment } from "./wishlist.ts"
 import { validateDesign, switchTemplate, defaultDesign } from "./templates.ts"
-import { recommend, extractPreferences, sanitisePreferences } from "./recommend.ts"
+import { recommend, extractPreferences, sanitisePreferences, avoidPattern } from "./recommend.ts"
+import { composeLetterByRules, acceptComposedLetter, validateLetterSend, LETTER_MAX_CHARS } from "./letters.ts"
+import { filledMoments, parseSongLink, sanitiseLetterDesign, validateLetterMoments, EMPTY_MOMENTS, MOMENT_LIMITS } from "./letter-studio.ts"
 import { entriesForPayment, entriesForRefund, appendIdempotent, vendorBalance } from "./ledger.ts"
 import { maskContact, orderReference, randomOtp, randomToken, sha256Hex } from "./tokens.ts"
 import { zonedTimeToUtc, toDateOnly } from "./time.ts"
@@ -345,9 +347,152 @@ describe("recommendations (AI 01–02)", () => {
     expect(p.deliverBy).toBe("2026-10-09")
   })
 
+  it("applies gift-only budgets, exclusions, personalisation and already-shown filters", () => {
+    // ₦25,000 roses, ₦25,001 budget: only fits when delivery is paid on top.
+    expect(recommend([product], { interests: [], budgetMax: 2_500_100, zoneId: "lagos-island" }, rctx).results).toHaveLength(0)
+    const giftOnly = recommend([product], { interests: [], budgetMax: 2_500_100, zoneId: "lagos-island", budgetExcludesDelivery: true }, rctx)
+    expect(giftOnly.results).toHaveLength(1)
+    expect(giftOnly.results[0].explanation).toMatch(/before delivery/)
+    const word = product.title.split(" ")[0].toLowerCase()
+    expect(recommend([product], { interests: [], avoid: [word] }, rctx).results).toHaveLength(0)
+    expect(recommend([product], { interests: [], excludeIds: [product.id] }, rctx).results).toHaveLength(0)
+    expect(recommend([{ ...product, personalisation: undefined }], { interests: [], personalisedOnly: true }, rctx).results).toHaveLength(0)
+    expect(avoidPattern(["nuts"])!.test("Praline and hazelnut truffles")).toBe(true)
+    expect(avoidPattern(["nuts"])!.test("A peaceful candle")).toBe(false)
+  })
+
+  it("doesn't read ordinary words as interests or budgets", () => {
+    const p = extractPreferences("A heartfelt treat for a great friend, deliver in 5000 years", now, TZ)
+    expect(p.interests).toEqual([])
+    expect(p.budgetMax).toBeUndefined()
+  })
+
   it("sanitises untrusted model output", () => {
     const p = sanitisePreferences({ occasion: "birthday", zoneId: "mars", interests: ["coffee-tea", "hacking"], budgetMax: -5 })
     expect(p).toEqual({ occasion: "birthday", relationship: undefined, zoneId: undefined, interests: ["coffee-tea"], budgetMax: undefined, deliverBy: undefined })
+  })
+})
+
+describe("digital letters", () => {
+  const brief = { recipientName: "Ada Obi", relationship: "sibling" as const, occasion: "birthday" as const, message: "i'm so proud of everything you've done this year", tone: "heartfelt" as const, signature: "Tolu" }
+
+  it("drafts only from what the sender supplied", () => {
+    const body = composeLetterByRules({ brief, mode: "draft" })
+    expect(body.startsWith("Dear Ada,")).toBe(true)
+    expect(body).toContain("Happy birthday!")
+    expect(body).toContain("I'm so proud of everything you've done this year.")
+    expect(body.trim().endsWith("Tolu")).toBe(true)
+    // No placeholders, and nothing about memories that weren't given.
+    expect(body).not.toMatch(/\[|remember when/i)
+  })
+
+  it("speaks to the recipient when the sender described them in the third person", () => {
+    const body = composeLetterByRules({ brief: { ...brief, message: "that she's the best big sister and I'm proud of her new job" }, mode: "draft" })
+    expect(body).toContain("I want you to know that you're the best big sister and I'm proud of your new job.")
+    // Left alone when it already speaks to them.
+    expect(composeLetterByRules({ brief: { ...brief, message: "you and her husband are the best" }, mode: "draft" })).toContain("You and her husband are the best.")
+  })
+
+  it("turns answer fragments into sentences without changing the words", () => {
+    const body = composeLetterByRules({ brief: { ...brief, message: "how proud I am of you" }, mode: "draft" })
+    expect(body).toContain("I want you to know how proud I am of you.")
+    expect(composeLetterByRules({ brief: { ...brief, message: "to say thank you for everything" }, mode: "draft" })).toContain("I wanted to say thank you for everything.")
+  })
+
+  it("revises without losing the sender's words", () => {
+    const draft = composeLetterByRules({ brief, mode: "draft" })
+    const shorter = composeLetterByRules({ brief, mode: "revise", revision: "shorter", draft })
+    expect(shorter.length).toBeLessThan(draft.length)
+    expect(shorter).toContain("proud of everything")
+    const warmer = composeLetterByRules({ brief, mode: "revise", revision: "warmer", draft })
+    expect(warmer).toContain("You mean the world to me.")
+    const me = composeLetterByRules({ brief, mode: "revise", revision: "like-me", draft })
+    expect(me).toContain("proud of everything")
+    expect(me).not.toContain("Happy birthday!")
+  })
+
+  it("polishes a sender's own draft and adds their signature", () => {
+    const out = composeLetterByRules({ brief, mode: "improve", draft: "hey ada!\n\nhope today is amazing" })
+    expect(out).toContain("Hope today is amazing.")
+    expect(out.trim().endsWith("Tolu")).toBe(true)
+  })
+
+  it("rejects model output with placeholders or over the limit", () => {
+    expect(acceptComposedLetter("Dear [Name], hi")).toBeNull()
+    expect(acceptComposedLetter("x".repeat(LETTER_MAX_CHARS + 1))).toBeNull()
+    expect(acceptComposedLetter("Dear Ada,\n\nHappy birthday.")).toBe("Dear Ada,\n\nHappy birthday.")
+  })
+
+  it("validates sends: contact, length, schedule window", () => {
+    const now = new Date("2026-10-06T09:00:00Z")
+    const ok = { clientRef: "abcdef123456", recipientName: "Ada", recipientEmail: "ADA@example.com", body: "Hi", senderDisplayName: "Tolu", sendAt: null }
+    const v = validateLetterSend(ok, now, 90)
+    expect(v.ok && v.value.recipientEmail).toBe("ada@example.com")
+    expect(validateLetterSend({ ...ok, recipientEmail: "nope" }, now, 90).ok).toBe(false)
+    expect(validateLetterSend({ ...ok, body: "" }, now, 90).ok).toBe(false)
+    expect(validateLetterSend({ ...ok, sendAt: "2026-10-06T09:01:00Z" }, now, 90).ok).toBe(false)
+    expect(validateLetterSend({ ...ok, sendAt: "2027-06-01T09:00:00Z" }, now, 90).ok).toBe(false)
+    expect(validateLetterSend({ ...ok, sendAt: "2026-10-07T09:00:00Z" }, now, 90).ok).toBe(true)
+  })
+
+  it("link letters need no email; email letters still do", () => {
+    const now = new Date("2026-10-06T09:00:00Z")
+    const base = { clientRef: "abcdef123456", recipientName: "Ada", body: "Hi", senderDisplayName: "Tolu", sendAt: null }
+    const link = validateLetterSend({ ...base, delivery: "link", recipientEmail: "ignored@example.com" }, now, 90)
+    expect(link.ok && link.value.delivery).toBe("link")
+    expect(link.ok && link.value.recipientEmail).toBeNull()
+    expect(validateLetterSend({ ...base, delivery: "email" }, now, 90).ok).toBe(false)
+    // Anything unknown falls back to email delivery, which needs an address.
+    expect(validateLetterSend({ ...base, delivery: "carrier-pigeon" }, now, 90).ok).toBe(false)
+  })
+
+  it("carries a cleaned design and moments, and rejects photos that aren't the sender's", () => {
+    const now = new Date("2026-10-06T09:00:00Z")
+    const base = { clientRef: "abcdef123456", delivery: "link", recipientName: "Ada", body: "Hi", senderDisplayName: "Tolu", sendAt: null }
+    const v = validateLetterSend({ ...base, design: { theme: "celebration", flowers: "weeds" }, moments: { reasons: ["  your laugh ", "", "your kindness"] } }, now, 90)
+    expect(v.ok && v.value.design.theme).toBe("celebration")
+    expect(v.ok && v.value.design.flowers).toBe("roses")
+    expect(v.ok && v.value.moments.reasons).toEqual(["your laugh", "your kindness"])
+    const photo = { ...base, moments: { photos: [{ path: "u2/img_1.webp", caption: "" }] } }
+    expect(validateLetterSend(photo, now, 90).ok).toBe(false)
+    expect(validateLetterSend(photo, now, 90, { photoPathOk: (p) => p.startsWith("u2/") }).ok).toBe(true)
+  })
+})
+
+describe("letter studio", () => {
+  it("accepts known music services only, and normalises them to an embed", () => {
+    expect(parseSongLink("https://open.spotify.com/intl-fr/track/4cOdK2wGLETKBW3PvgPWqT?si=abc")).toEqual({ provider: "spotify", url: "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT", embedUrl: "https://open.spotify.com/embed/track/4cOdK2wGLETKBW3PvgPWqT" })
+    expect(parseSongLink("https://youtu.be/dQw4w9WgXcQ?t=10")?.embedUrl).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ")
+    expect(parseSongLink("https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=x")?.provider).toBe("youtube")
+    expect(parseSongLink("https://music.youtube.com/watch?v=dQw4w9WgXcQ")?.provider).toBe("youtube")
+    expect(parseSongLink("https://music.apple.com/ng/album/essence/1564492342?i=1564492345")?.embedUrl).toBe("https://embed.music.apple.com/ng/album/essence/1564492342?i=1564492345")
+    expect(parseSongLink("https://audiomack.com/wizkid/song/essence")?.embedUrl).toBe("https://audiomack.com/embed/song/wizkid/essence")
+    for (const bad of ["https://evil.example/track/1", "javascript:alert(1)", "https://open.spotify.com/artist/4cOdK2wGLETKBW3PvgPWqT", "https://youtube.com/watch?v=short", "not a link"]) expect(parseSongLink(bad)).toBeNull()
+  })
+
+  it("cleans moments: drops blanks, trims to limits, rejects impossible dates and unknown songs", () => {
+    const v = validateLetterMoments({
+      reasons: Array.from({ length: 20 }, (_, i) => `reason ${i}`),
+      story: [{ when: "2019", title: "", text: "" }, { when: "2020", title: "We met", text: "x".repeat(900) }],
+      places: [{ name: "", note: "nowhere" }, { name: "Tarkwa Bay", note: "" }],
+      date: { on: "2021-02-14", label: "Our first date" },
+      closing: "Always\u202E yours",
+    })
+    expect(v.ok).toBe(true)
+    if (!v.ok) return
+    expect(v.value.reasons).toHaveLength(MOMENT_LIMITS.reasons.items)
+    expect(v.value.story).toHaveLength(1)
+    expect(v.value.story[0].text).toHaveLength(MOMENT_LIMITS.story.text)
+    expect(v.value.places).toEqual([{ name: "Tarkwa Bay", note: "" }])
+    expect(v.value.closing).toBe("Always yours")
+    expect(filledMoments(v.value)).toEqual(["letter", "reasons", "story", "date", "places"])
+    expect(validateLetterMoments({ date: { on: "2021-02-30", label: "" } }).ok).toBe(false)
+    expect(validateLetterMoments({ song: { url: "https://example.com/song", title: "", note: "" } }).ok).toBe(false)
+    expect(filledMoments(EMPTY_MOMENTS)).toEqual(["letter"])
+  })
+
+  it("falls back to the default design for anything unknown", () => {
+    expect(sanitiseLetterDesign({ theme: "x", light: "night", petals: "yes" })).toEqual({ theme: "table", flowers: "roses", light: "night", petals: true, butterflies: false, gold: true })
   })
 })
 

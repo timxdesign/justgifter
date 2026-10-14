@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router"
 import type { CaseKind, RefundReason } from "@domain/index.ts"
-import { CLAIM_STATUS_LABEL, ORDER_STATUS_LABEL, ORDER_STATUS_TONE, REFUND_STATUS_LABEL, REVEAL_STATUS_LABEL, zoneById, LAUNCH_TIMEZONE, zonedTimeToUtc, toDateOnly } from "@domain/index.ts"
+import { CLAIM_STATUS_LABEL, ORDER_STATUS_LABEL, ORDER_STATUS_TONE, REFUND_STATUS_LABEL, REVEAL_STATUS_LABEL, zoneById, LAUNCH_TIMEZONE, zonedTimeToUtc, toDateOnly, LETTER_MAX_CHARS } from "@domain/index.ts"
 import type { OrderDetail } from "@/api"
 import { Container, ErrorState, Img, KeyValue, PageSkeleton, StatusBadge } from "@/components/common"
 import { OrderProgress, PriceBreakdownList } from "@/components/commerce"
@@ -176,7 +176,7 @@ function EditGiftDialog({ d }: { d: OrderDetail }) {
         </DialogHeader>
         <FieldGroup>
           {!g.anonymous && <Field><FieldLabel htmlFor="e-from">From</FieldLabel><Input id="e-from" value={sender} onChange={(e) => setSender(e.target.value)} /></Field>}
-          <Field><FieldLabel htmlFor="e-msg">Message</FieldLabel><Textarea id="e-msg" rows={4} maxLength={300} value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
+          <Field><FieldLabel htmlFor="e-msg">Message</FieldLabel><Textarea id="e-msg" rows={message.length > 300 ? 10 : 4} maxLength={LETTER_MAX_CHARS} value={message} onChange={(e) => setMessage(e.target.value)} /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field><FieldLabel htmlFor="e-date">Date</FieldLabel><Input id="e-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></Field>
             <Field><FieldLabel htmlFor="e-time">Time (WAT)</FieldLabel><Input id="e-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} /></Field>

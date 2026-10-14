@@ -69,4 +69,6 @@ export const qk = {
   ops: ["ops"] as const,
   admin: (k: string, f?: unknown) => ["admin", k, f] as const,
   gift: (token: string) => ["gift", token] as const,
+  myLetters: ["my-letters"] as const,
+  letter: (token: string) => ["letter", token] as const,
 }

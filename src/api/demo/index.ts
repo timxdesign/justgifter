@@ -6,6 +6,7 @@ import { ordersApi } from "./api-orders"
 import { eventsApi } from "./api-events"
 import { vendorApi } from "./api-vendor"
 import { adminApi } from "./api-admin"
+import { lettersApi } from "./api-letters"
 
 export interface DemoBackend extends Api {
   store: Store
@@ -22,5 +23,6 @@ export async function createDemoApi(): Promise<DemoBackend> {
     ...eventsApi(store),
     ...vendorApi(store),
     ...adminApi(store),
+    ...lettersApi(store),
   }
 }

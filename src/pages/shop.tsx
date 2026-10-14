@@ -183,7 +183,7 @@ export default function ShopPage() {
                   </Button>
                 )}
                 <Button asChild>
-                  <Link to={`/assistant${q ? `?q=${encodeURIComponent(q)}` : ""}`}>
+                  <Link to={`/send${q ? `?q=${encodeURIComponent(q)}` : "?intent=gift"}`}>
                     <StarsIcon data-icon="inline-start" />
                     Ask the gift assistant
                   </Link>

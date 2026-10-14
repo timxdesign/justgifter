@@ -10,6 +10,7 @@ import {
   addHours,
   randomToken,
   maskContact,
+  LETTER_MAX_CHARS,
 } from "@domain/index.ts"
 import type { Api, GiftRevealView, OrderDetail, OrderGiftView } from "../types"
 import { ApiError } from "../errors"
@@ -232,7 +233,7 @@ export function ordersApi(s: Store): Pick<Api,
       if (!gift) throw new ApiError("not_found", "This order isn't a gift.")
       if (!(gift.revealStatus === "draft" || gift.revealStatus === "scheduled")) throw new ApiError("conflict", "The reveal has already been sent, so the message can't be changed.")
       if (patch.message !== undefined) {
-        if (patch.message.length > 300) throw new ApiError("validation", "Keep the message under 300 characters.")
+        if (patch.message.length > LETTER_MAX_CHARS) throw new ApiError("validation", `Keep the message under ${LETTER_MAX_CHARS.toLocaleString("en")} characters.`)
         gift.message = patch.message.trim()
       }
       if (patch.senderDisplayName !== undefined && !gift.anonymous) gift.senderDisplayName = patch.senderDisplayName.trim()

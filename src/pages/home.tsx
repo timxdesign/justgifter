@@ -1,7 +1,7 @@
 import { Link } from "react-router"
 import { motion, useReducedMotion } from "motion/react"
 import { BUDGET_BANDS, OCCASIONS } from "@domain/index.ts"
-import { Container, Img, SectionHeading, CardGridSkeleton } from "@/components/common"
+import { Container, Img, SectionHeading, CardGridSkeleton, ErrorState } from "@/components/common"
 import { ProductGrid, VendorAvatar } from "@/components/commerce"
 import { HeroRevealDemo } from "@/components/reveal/hero-demo"
 import { Button } from "@/components/ui/button"
@@ -50,7 +50,13 @@ export default function HomePage() {
             }
           />
           <BudgetChips />
-          {feed.data ? <ProductGrid products={feed.data.featured} /> : <CardGridSkeleton count={8} />}
+          {feed.error && !feed.data ? (
+            <ErrorState error={feed.error} retry={() => feed.refetch()} />
+          ) : feed.data ? (
+            <ProductGrid products={feed.data.featured} />
+          ) : (
+            <CardGridSkeleton count={8} />
+          )}
         </Container>
       </section>
       <RevealStory />
@@ -99,7 +105,7 @@ function Hero() {
           </motion.p>
           <motion.div {...item(3)} className="flex flex-col gap-3 sm:flex-row">
             <Button size="xl" asChild>
-              <Link to="/shop">
+              <Link to="/send">
                 <GiftIcon data-icon="inline-start" />
                 Send a gift
               </Link>
@@ -190,7 +196,7 @@ function RevealStory() {
               <Link to="/shop">Find a gift</Link>
             </Button>
             <Button size="xl" variant="ghost" className="text-plum-foreground hover:bg-white/10 hover:text-plum-foreground" asChild>
-              <Link to="/assistant">
+              <Link to="/send?intent=gift">
                 <StarsIcon data-icon="inline-start" />
                 Ask the gift assistant
               </Link>

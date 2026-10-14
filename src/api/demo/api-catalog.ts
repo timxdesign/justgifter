@@ -268,12 +268,14 @@ export function catalogApi(s: Store): Pick<Api, "getHomeFeed" | "listProducts" |
       const prefs = sanitisePreferences({ ...fromText, ...Object.fromEntries(Object.entries(req.prefs ?? {}).filter(([, v]) => v !== undefined && !(Array.isArray(v) && v.length === 0))) })
       if (req.prefs?.interests?.length || fromText.interests.length) prefs.interests = [...new Set([...(fromText.interests ?? []), ...(req.prefs?.interests ?? [])])]
       const products: Product[] = s.db.products.filter((p) => isPurchasable(s, p))
-      const result = recommend(products, prefs, { now, timezone: s.db.settings.timezone, maxAdvanceDays: s.db.settings.maxAdvanceDays, vendors: new Map(s.db.vendors.map((v) => [v.id, v])), holds: s.db.holds }, 9)
+      const result = recommend(products, prefs, { now, timezone: s.db.settings.timezone, maxAdvanceDays: s.db.settings.maxAdvanceDays, vendors: new Map(s.db.vendors.map((v) => [v.id, v])), holds: s.db.holds }, 12)
       // AI 02: every suggested ID is re-validated against the live catalogue before rendering.
       const picks: AssistantPick[] = result.results.flatMap((r) => {
         const p = products.find((x) => x.id === r.productId)
-        if (!p || !p.variants.some((v) => v.id === r.variantId && v.price === r.price)) return []
-        return [{ product: productCard(s, p, prefs.zoneId), variantId: r.variantId, explanation: r.explanation, reasons: r.reasons, totalWithDelivery: r.deliveryFee !== null ? r.price + r.deliveryFee : null }]
+        const variant = p?.variants.find((v) => v.id === r.variantId && v.price === r.price)
+        if (!p || !variant) return []
+        const deliveryFee = prefs.zoneId ? r.deliveryFee : null
+        return [{ product: productCard(s, p, prefs.zoneId), variantId: r.variantId, variantName: variant.name, price: r.price, deliveryFee, explanation: r.explanation, reasons: r.reasons, totalWithDelivery: deliveryFee !== null ? r.price + deliveryFee : null }]
       })
       return clone({
         prefs,

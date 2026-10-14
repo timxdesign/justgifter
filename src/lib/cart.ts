@@ -132,6 +132,9 @@ export interface CheckoutIntent {
   recipientName?: string
   zoneId?: import("@domain/index.ts").ZoneId
   requestedDate?: string
+  /** Pre-filled from the send-gift assistant; still editable at checkout. */
+  message?: string
+  senderDisplayName?: string
 }
 
 const ZONE_KEY = "jg-zone"

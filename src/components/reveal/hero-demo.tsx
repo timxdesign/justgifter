@@ -114,10 +114,10 @@ function MiniBox({ opening }: { opening: boolean }) {
   return (
     <motion.span aria-hidden="true" className="absolute inset-0 block" animate={!opening && !reduce ? { y: [0, -5, 0], rotate: [0, -1.5, 0, 1.5, 0] } : {}} transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}>
       <motion.span className="absolute inset-[-25%] rounded-full" style={{ background: "radial-gradient(circle, oklch(0.95 0.08 85 / 0.9), transparent 60%)" }} initial={{ opacity: 0 }} animate={opening ? { opacity: [0, 0.9, 0], scale: [0.5, 1.2, 1.4] } : { opacity: 0 }} transition={{ duration: 1.3, delay: 0.8 }} />
-      <motion.span className="absolute inset-x-[8%] top-[32%] bottom-0 overflow-hidden rounded-b-xl rounded-t-sm" style={{ background: "linear-gradient(160deg, oklch(0.72 0.17 47), oklch(0.6 0.18 38))" }} animate={opening ? { y: [0, 40], opacity: [1, 0] } : {}} transition={{ duration: 0.7, delay: 1.1, ease }}>
+      <motion.span className="absolute inset-x-[8%] top-[32%] bottom-0 overflow-hidden rounded-b-xl rounded-t-sm" style={{ background: "linear-gradient(160deg, var(--color-primary-400), var(--color-primary-600))" }} animate={opening ? { y: [0, 40], opacity: [1, 0] } : {}} transition={{ duration: 0.7, delay: 1.1, ease }}>
         <span className="absolute inset-y-0 left-1/2 w-[16%] -translate-x-1/2 bg-[oklch(0.84_0.11_86)]" />
       </motion.span>
-      <motion.span className="absolute inset-x-[2%] top-[24%] h-[17%] rounded-lg" style={{ background: "linear-gradient(170deg, oklch(0.75 0.17 50), oklch(0.64 0.18 40))" }} animate={opening ? { y: [0, -160], rotate: [0, -25], opacity: [1, 0] } : {}} transition={{ duration: 0.9, delay: 0.35, ease }}>
+      <motion.span className="absolute inset-x-[2%] top-[24%] h-[17%] rounded-lg" style={{ background: "linear-gradient(170deg, var(--color-primary-300), var(--color-primary-500))" }} animate={opening ? { y: [0, -160], rotate: [0, -25], opacity: [1, 0] } : {}} transition={{ duration: 0.9, delay: 0.35, ease }}>
         <span className="absolute inset-y-0 left-1/2 w-[15%] -translate-x-1/2 bg-[oklch(0.86_0.1_88)]" />
       </motion.span>
       <motion.svg viewBox="0 0 120 70" className="absolute top-[4%] left-1/2 w-[46%] -translate-x-1/2" animate={opening ? { scale: [1, 1.2, 0], opacity: [1, 1, 0] } : {}} transition={{ duration: 0.55, ease }}>

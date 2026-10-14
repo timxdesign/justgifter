@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/scripts/check-docs.mjs --hook",
+            "timeout": 30,
+            "statusMessage": "Checking docs are up to date"
+          }
+        ]
+      }
+    ]
+  }
+}
