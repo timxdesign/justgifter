@@ -4,6 +4,8 @@ Notable changes for users, operators and developers. Newest first. Add a line un
 
 ## Unreleased
 
+- **Letter photos accept HEIC** (iPhone photos), decoded natively in Safari and by `heic-to` (loaded on demand) elsewhere. Every photo is compressed in the browser to about 450 KB or less: up to 1600 px on the long side, with quality and then size stepped down until it fits. Safari, which can't encode WebP, uploads JPEG. The CSP gains `worker-src 'self' blob:` for the decoder's worker.
+
 - **Send a gift studio (`/send`):** the gift conversation is now a studio, matching the letter studio.
   - Steps: Who → Gift → Letter (for a gift with a letter) → Review.
   - Ideas update live as you set budget, interests, area and date.

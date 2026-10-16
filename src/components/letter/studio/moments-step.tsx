@@ -11,7 +11,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { AddIcon, AltArrowLeftIcon, AltArrowRightIcon, ArrowLeftIcon, CheckCircleIcon, CloseIcon, GalleryAddIcon, InfoCircleIcon, MagicWandIcon, PenIcon, StarsIcon, TrashBinMinimalisticIcon, UndoLeftIcon } from "@/components/icons"
 import { useApiMutation } from "@/lib/api-hooks"
-import { prepareImage } from "@/lib/images"
+import { IMAGE_ACCEPT, isHeic, LETTER_PHOTO, prepareImage } from "@/lib/images"
 import { deletePhoto, newPhotoId, putPhoto } from "@/lib/letter-photos"
 import { CLOSINGS, hasContent, momentState, MOMENTS, STARTERS, type DraftMoments, type StudioDraft, type StudioProblem } from "@/lib/letter-studio"
 import { FLOWER_PALETTE, MomentObject } from "../art"
@@ -426,18 +426,19 @@ function StoryEditor({ d, setM }: { d: StudioDraft; setM: (p: Partial<DraftMomen
 function PhotosEditor({ d, setM, photos }: { d: StudioDraft; setM: (p: Partial<DraftMoments>) => void; photos: PhotoStore }) {
   const L = MOMENT_LIMITS.photos
   const list = d.moments.photos
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
   const [over, setOver] = useState(false)
   const addFiles = async (files: FileList | File[]) => {
     const room = L.items - list.length
     const chosen = Array.from(files).slice(0, room)
     if (Array.from(files).length > room) toast.info(`A letter can hold ${L.items} photos, so only the first ${room} were added.`)
     if (!chosen.length) return
-    setBusy(true)
     const added: typeof list = []
-    for (const f of chosen) {
+    for (const [n, f] of chosen.entries()) {
+      // HEIC can take a few seconds to convert, so say what's happening.
+      setBusy(`${isHeic(f) ? "Converting" : "Preparing"} photo ${n + 1} of ${chosen.length}…`)
       try {
-        const blob = await prepareImage(f, 1600)
+        const blob = await prepareImage(f, LETTER_PHOTO)
         const id = newPhotoId()
         await putPhoto(id, blob)
         photos.add(id, blob)
@@ -447,7 +448,7 @@ function PhotosEditor({ d, setM, photos }: { d: StudioDraft; setM: (p: Partial<D
       }
     }
     setM({ photos: [...list, ...added] })
-    setBusy(false)
+    setBusy(null)
   }
   const remove = (id: string) => {
     setM({ photos: list.filter((p) => p.id !== id) })
@@ -470,9 +471,9 @@ function PhotosEditor({ d, setM, photos }: { d: StudioDraft; setM: (p: Partial<D
           className={cn("flex cursor-pointer flex-col items-center gap-2 rounded-3xl border-2 border-dashed px-4 py-8 text-center transition-colors focus-within:ring-2", over ? "border-brand bg-brand-soft" : "hover:border-foreground/30")}
         >
           {busy ? <Spinner className="size-6" /> : <GalleryAddIcon className="text-brand-text size-8" />}
-          <span className="font-medium">{busy ? "Adding…" : "Choose photos, or drop them here"}</span>
-          <span className="text-muted-foreground text-sm">JPEG, PNG or WebP · up to {L.items} photos</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" disabled={busy} onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = "" }} />
+          <span className="font-medium" aria-live="polite">{busy ?? "Choose photos, or drop them here"}</span>
+          <span className="text-muted-foreground text-sm">JPEG, PNG, WebP or HEIC · up to {L.items} photos</span>
+          <input type="file" accept={IMAGE_ACCEPT} multiple className="sr-only" disabled={Boolean(busy)} onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = "" }} />
         </label>
       )}
       {list.length > 0 && (
@@ -502,7 +503,7 @@ function PhotosEditor({ d, setM, photos }: { d: StudioDraft; setM: (p: Partial<D
       )}
       <p className="text-muted-foreground flex gap-1.5 text-xs">
         <InfoCircleIcon className="mt-0.5 size-3.5 shrink-0" />
-        Photos stay on this device until you send. We remove location data, and only people with the letter's link can see them.
+        Photos stay on this device until you send. We compress them so the letter loads fast, remove location data, and only people with the letter's link can see them.
       </p>
     </div>
   )

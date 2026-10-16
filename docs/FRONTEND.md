@@ -25,7 +25,7 @@ Vite 8, React 19 and TypeScript, styled with Tailwind v4 and shadcn/ui (Radix). 
 | `lib/send-flow.ts` | The send draft (`SendState`) and free-text understanding (`interpret`), shared by the send studio (tested in `send-flow.test.ts`). |
 | `lib/gift-studio.ts` | Send studio steps, per-step checks, the recipient preview and the checkout hand-over (tested in `gift-studio.test.ts`). |
 | `lib/letter-studio.ts` | Letter studio draft, moment metadata, per-step checks and the `sendLetter` payload (tested in `letter-studio.test.ts`). `lib/letter-photos.ts` keeps draft photos in IndexedDB until sending. |
-| `lib/images.ts` | Client-side re-encode (EXIF strip, resize) before upload. |
+| `lib/images.ts` | Client-side re-encode before upload: accepts JPEG, PNG, WebP and HEIC (decoder loaded on demand), applies orientation, strips EXIF, resizes, and compresses to a size target (`LETTER_PHOTO`). Outputs WebP, or JPEG where the browser can't encode WebP. |
 | `lib/seo.ts` | Per-page `<title>` and meta tags for client navigation. The Worker handles the first load. |
 | `lib/format.ts`, `lib/theme.tsx`, `lib/env.ts`, `lib/utils.ts` | Formatting, light and dark theme, public env, `cn()`. |
 | `data/seed-catalog.ts` | Starter vendors and products, shared by the demo and `supabase/seed.sql`. |

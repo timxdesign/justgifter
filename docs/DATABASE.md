@@ -80,7 +80,7 @@ From `20261001000200_storage.sql` and `20261014090000_letter_studio.sql`:
 | `product-media` | yes | 8 MB | webp, jpeg, png | Listing images. Uploaded through signed URLs after a vendor-scope check. |
 | `storefront-media` | yes | 8 MB | webp, jpeg, png | Store covers. |
 | `private-evidence` | no | 10 MB | images, pdf | Application documents (`applications/<vendor_id>/`) and support evidence. Read only through short-lived signed URLs. |
-| `letter-media` | no | 8 MB | webp, jpeg, png | Letter photos (`<user_id>/img_….webp`). Uploaded by confirmed senders through signed URLs; read only through one-hour signed URLs when the recipient opens the letter. |
+| `letter-media` | no | 8 MB | webp, jpeg, png | Letter photos (`<user_id>/img_….webp`, or `.jpg` from browsers that can't encode WebP, such as Safari). Compressed in the browser to about 450 KB at most. Uploaded by confirmed senders through signed URLs; read only through one-hour signed URLs when the recipient opens the letter. |
 
 Images are re-encoded in the browser before upload, which strips EXIF (`src/lib/images.ts`).
 

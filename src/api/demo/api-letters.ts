@@ -50,7 +50,7 @@ export function lettersApi(s: Store): Pick<Api, "composeLetter" | "sendLetter" |
       await latency(300)
       const user = s.requireUser()
       if (!["image/webp", "image/jpeg", "image/png"].includes(blob.type) || blob.size > MAX_PHOTO_BYTES) throw new ApiError("validation", "Photos must be JPEG, PNG or WebP, up to 8 MB.")
-      const path = `${user.id}/${uid("img")}.webp`
+      const path = `${user.id}/${uid("img")}.${blob.type === "image/jpeg" ? "jpg" : "webp"}`
       s.db.letterMedia[path] = await new Promise<string>((resolve, reject) => {
         const r = new FileReader()
         r.onload = () => resolve(String(r.result))

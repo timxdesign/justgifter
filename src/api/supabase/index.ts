@@ -111,8 +111,9 @@ export async function createSupabaseApi(): Promise<Api> {
     composeLetter: (req) => call("composeLetter", { req }),
     sendLetter: (input) => call("sendLetter", { input }),
     async uploadLetterPhoto(blob) {
-      const { path, token, bucket } = await call<{ path: string; token: string; bucket: string }>("uploadLetterPhotoUrl")
-      const { error } = await sb.storage.from(bucket).uploadToSignedUrl(path, token, blob, { contentType: "image/webp" })
+      const type = blob.type === "image/jpeg" ? "image/jpeg" : "image/webp"
+      const { path, token, bucket } = await call<{ path: string; token: string; bucket: string }>("uploadLetterPhotoUrl", { type })
+      const { error } = await sb.storage.from(bucket).uploadToSignedUrl(path, token, blob, { contentType: type })
       if (error) throw new ApiError("unavailable", "The photo didn't upload. Try again.")
       return { path }
     },
@@ -211,7 +212,7 @@ export async function createSupabaseApi(): Promise<Api> {
 
     async uploadMedia(blob, purpose) {
       const { path, token, bucket } = await call<{ path: string; token: string; bucket: string }>("uploadMediaUrl", { purpose })
-      const { error } = await sb.storage.from(bucket).uploadToSignedUrl(path, token, blob, { contentType: "image/webp" })
+      const { error } = await sb.storage.from(bucket).uploadToSignedUrl(path, token, blob, { contentType: blob.type === "image/jpeg" ? "image/jpeg" : "image/webp" })
       if (error) throw new ApiError("unavailable", "The photo didn't upload. Try again.")
       return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl
     },

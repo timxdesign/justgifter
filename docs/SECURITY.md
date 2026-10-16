@@ -29,7 +29,7 @@ Addresses are kept in separate tables (`order_addresses`, `event_addresses`) tha
 - Gift links (`/g/`), letter links (`/l/`), preview links, order-access tokens and gift sessions are random 32-byte tokens. **Only their SHA-256 hash is stored**, and they are compared in constant time (`safeEqual`).
 - Gift and letter tokens are minted when the message is sent, not when the order is made, so cancelled items never had a working link.
 - Link letters are the exception: their token is minted when the sender creates them, and it's shown once. It's never stored, so a lost link can only be replaced (`renewLetterLink`), which stops the old one working. Cancelling clears the hash.
-- Letter photos live in a private bucket under the sender's user id. `sendLetter` accepts only paths in the caller's own folder, and recipients get one-hour signed URLs. Draft photos stay on the sender's device until they press send, and every photo is re-encoded first, which strips location data.
+- Letter photos live in a private bucket under the sender's user id. `sendLetter` accepts only paths in the caller's own folder, and recipients get one-hour signed URLs. Draft photos stay on the sender's device until they press send, and every photo is re-encoded first (`src/lib/images.ts`), which strips location data and applies the camera's orientation. JPEG, PNG, WebP and HEIC/HEIF are accepted, up to 30 MB in.
 - Music players load only after the reader presses play, so opening a letter contacts no third party.
 - Address-unknown gifts need a second factor: a code sent to the contact the sender used, which creates a short-lived `gift_sessions` row.
 - One-time codes are hashed, expire after 10 minutes, allow 5 attempts, and are limited to 3 per minute per key.
@@ -39,7 +39,7 @@ Addresses are kept in separate tables (`order_addresses`, `event_addresses`) tha
 
 The Worker (`worker/index.ts`) sets the following on every response:
 
-- `Content-Security-Policy`: self, the Supabase origin, Cloudflare Turnstile and the Paystack checkout frame. For "Our song" in letters, it also allows the Spotify, YouTube (no-cookie), Apple Music and Audiomack player frames, kept in step with `SONG_FRAME_ORIGINS` by a test. `frame-ancestors 'none'`.
+- `Content-Security-Policy`: self, the Supabase origin, Cloudflare Turnstile and the Paystack checkout frame. For "Our song" in letters, it also allows the Spotify, YouTube (no-cookie), Apple Music and Audiomack player frames, kept in step with `SONG_FRAME_ORIGINS` by a test. `worker-src 'self' blob:` lets the HEIC decoder (`heic-to/csp`, loaded only when someone picks a HEIC photo on a browser without native HEIC support) run its worker; it needs no `eval` or WebAssembly. `frame-ancestors 'none'`.
 - `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Permissions-Policy` (camera, mic, geolocation and payment off).
 
 Private routes also get `Cache-Control: no-store, private`, `X-Robots-Tag: noindex, nofollow` and `Referrer-Policy: no-referrer`, so tokens can't leak to caches, crawlers or third parties.

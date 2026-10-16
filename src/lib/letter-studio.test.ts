@@ -70,4 +70,10 @@ describe("letter studio", () => {
     const frameSrc = worker.match(/"frame-src ([^"]+)"/)?.[1] ?? ""
     for (const origin of SONG_FRAME_ORIGINS) expect(frameSrc.split(" ")).toContain(origin)
   })
+
+  it("lets the HEIC decoder start its worker", () => {
+    // heic-to/csp decodes iPhone photos in a worker created from a blob: URL (src/lib/images.ts).
+    const worker = readFileSync(resolve(process.cwd(), "worker/index.ts"), "utf8")
+    expect(worker.match(/"worker-src ([^"]+)"/)?.[1].split(" ")).toContain("blob:")
+  })
 })

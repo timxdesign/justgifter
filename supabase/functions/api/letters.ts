@@ -44,7 +44,7 @@ async function mintLink(id: string) {
 }
 
 /** A photo path the caller may attach: one they uploaded, in their own folder. */
-const ownPhoto = (userId: string) => (path: string) => new RegExp(`^${userId}/img_[a-z0-9]{10}\\.webp$`).test(path)
+const ownPhoto = (userId: string) => (path: string) => new RegExp(`^${userId}/img_[a-z0-9]{10}\\.(webp|jpg)$`).test(path)
 
 export const letters: Record<string, Handler> = {
   async composeLetter({ args }) {
@@ -55,11 +55,12 @@ export const letters: Record<string, Handler> = {
     return ai ? { body: ai, source: "ai" } : { body: composeLetterByRules(req), source: "rules" }
   },
 
-  async uploadLetterPhotoUrl({ caller }) {
+  async uploadLetterPhotoUrl({ caller, args }) {
     // Signed upload into the private bucket. The client re-encodes images first (SEC 04), and the
     // bucket itself enforces type and size.
     if (!caller.userId || !caller.emailVerified) throw fail("unauthorised", "Confirm your email address to add photos.")
-    const path = `${caller.userId}/${uid("img")}.webp`
+    // WebP normally; JPEG from browsers that can't encode WebP (Safari).
+    const path = `${caller.userId}/${uid("img")}.${args.type === "image/jpeg" ? "jpg" : "webp"}`
     const { data, error } = await db().storage.from(MEDIA_BUCKET).createSignedUploadUrl(path)
     if (error) throw fail("unavailable", "We couldn't prepare the upload. Try again.")
     return { path, token: data.token, bucket: MEDIA_BUCKET }

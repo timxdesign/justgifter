@@ -37,6 +37,8 @@ function csp(env: Env) {
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: ${supabase}`,
     "font-src 'self' data:",
+    // The HEIC decoder (loaded only for iPhone photos) runs in a worker it starts from a blob: URL.
+    "worker-src 'self' blob:",
     `connect-src 'self' ${supabase} ${supabase.replace("https://", "wss://")}`,
     // Music players in letters ("Our song"). Must match SONG_FRAME_ORIGINS in domain/letter-studio.ts (a test checks).
     "frame-src https://challenges.cloudflare.com https://checkout.paystack.com https://open.spotify.com https://www.youtube-nocookie.com https://embed.music.apple.com https://audiomack.com",
